@@ -1,0 +1,24 @@
+# Build artifacts
+build/
+install/
+log/
+
+# Generated files
+*.pyc
+*.o
+*.so
+*.a
+*.cmake
+CMakeCache.txt
+Makefile
+
+# IDE and editor files
+.devcontainer/
+.cproject
+.project
+.pydevproject
+.vscode/
+.idea/
+*~
+#*#
+.#*
