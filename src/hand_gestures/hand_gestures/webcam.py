@@ -49,11 +49,14 @@ class WebcamPublisher(Node):
         self.destroy_node()
         self.get_logger().info("Webcam Publisher Node Shutting Down")
 
+#
+# Spin up node 
+# On keyboard interrupt, just clean up
+#
 def main(args=None):
     rclpy.init(args=args)
     webcam_publisher = WebcamPublisher()
     
-    # On keyboard interrupt, just clean up
     try:
         rclpy.spin(webcam_publisher)
     except KeyboardInterrupt:
