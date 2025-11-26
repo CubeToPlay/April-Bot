@@ -65,28 +65,29 @@ class Gestures(Node):
         
         frame = cv2.flip(frame, 1)
         landmark_results = self.detect_landmarks(frame)
-            
-        # Publish hand tracking visualization
-        image_marked = self.draw_landmarks(frame, landmark_results)
-        image_msg = self.bridge.cv2_to_imgmsg(image_marked, encoding='bgr8')
-        self.frame_publisher.publish(image_msg)
         
-        # Publish gesture identification
+        # Generate gesture identification message
         gesture = self.detect_gesture(landmark_results)
                 
         int_msg = Int32()
         int_msg.data = int(gesture)
+                
+        # Generate hand tracking visualization message
+        image_marked = self.draw_landmarks(frame, landmark_results, gesture)
+        image_msg = self.bridge.cv2_to_imgmsg(image_marked, encoding='bgr8')
         
-        self.get_logger().info(int_msg)
-
         self.gesture_publisher.publish(int_msg)
+        self.frame_publisher.publish(image_msg)
+        
+        self.get_logger().info("Publishing detected gesture and gesture frame")
+        
     
     # https://github.com/patience60-svg/gesture-control-ros2
     # https://mediapipe.readthedocs.io/en/latest/solutions/hands.html
     def build_model(self):
         return solutions.hands.Hands(
             static_image_mode=False,
-            max_num_hands=2,
+            max_num_hands=1,
             min_detection_confidence=0.7,
             min_tracking_confidence=0.5
         )
@@ -100,7 +101,7 @@ class Gestures(Node):
         return result
     
     # Draw landmarks onto a frame
-    def draw_landmarks(self, frame, result):
+    def draw_landmarks(self, frame, result, gesture):
         multi_hand_landmarks = result.multi_hand_landmarks
         frame_marked = np.copy(frame)
         
@@ -108,7 +109,23 @@ class Gestures(Node):
             for hand_landmarks in multi_hand_landmarks:
                 solutions.drawing_utils.draw_landmarks(frame_marked, hand_landmarks, solutions.hands.HAND_CONNECTIONS)
                 solutions.drawing_utils.draw_landmarks(frame_marked, hand_landmarks, solutions.hands.HAND_CONNECTIONS)
-        
+
+                # Define text properties
+                text = f"{gesture}"
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 1
+                color = (0, 255, 0) 
+                thickness = 3
+                line_type = cv2.LINE_AA
+                
+                pos = (
+                    int(hand_landmarks.landmark[0].x * frame_marked.shape[1]) - 10, 
+                    int(hand_landmarks.landmark[0].y * frame_marked.shape[0]) + 30
+                )
+
+                # Draw the text on the image
+                cv2.putText(frame_marked, text, pos, font, font_scale, color, thickness, line_type)
+
         return frame_marked
 
     # 
