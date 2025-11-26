@@ -17,7 +17,7 @@ class WebcamPublisher(Node):
         self.publisher = self.create_publisher(Image, '/webcam_raw', 10)
     
         # Calls image callback every set time
-        self.timer = self.create_timer(0.05, self.image_callback)
+        self.timer = self.create_timer(0.1, self.image_callback)
         
         self.bridge = CvBridge()
         self.capture = cv2.VideoCapture(0)

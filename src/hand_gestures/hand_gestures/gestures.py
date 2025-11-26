@@ -7,6 +7,7 @@ from std_msgs.msg import Int32
 from cv_bridge import CvBridge
 import cv2
 
+from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmark
 from mediapipe import solutions
 import numpy as np
 
@@ -18,19 +19,48 @@ class Gestures(Node):
         super().__init__('gestures')
         
         self.subscriber = self.create_subscription(Image, '/webcam_raw', self.image_callback, 1)
+        
+        # Publisher for gesture visualization
         self.frame_publisher = self.create_publisher(Image, '/gesture_frames', 10)
+        
+        # Publisher for detected gesture
         self.gesture_publisher = self.create_publisher(Int32, '/gesture', 10)
         self.bridge = CvBridge()
                         
         self.model = self.build_model()
+        
+        # [Thumb, Pointer, Middle, Ring, Pinky]
+        # (mcp, pip, tip, refrence, threshold)
+        self.finger_props = [
+            (2, 2, 4, 17, 0.2), 
+            (5, 6, 8, 0, 0.3), 
+            (9, 10, 12, 0, 0.3), 
+            (13, 14, 16, 0, 0.2), 
+            (17, 18, 20, 0, 0.3)
+        ]
+        
+        # Sign language finger gestures table
+        self.finger_gesture_table = [
+            [0, 0, 0, 0, 0], # undefined
+            [0, 1, 0, 0, 0], # 1
+            [0, 1, 1, 0, 0], # 2
+            [1, 1, 1, 0, 0], # 3
+            [0, 1, 1, 1, 1], # 4
+            [1, 1, 1, 1, 1], # 5
+            [0, 1, 1, 1, 0], # 6
+            [0, 1, 1, 0, 1], # 7
+            [0, 1, 0, 1, 1], # 8
+            [0, 0, 1, 1, 1], # 9
+            [1, 0, 0, 0, 0]  # 10
+        ]
 
-    
+    # Process message from the image topic and publish gesture data
     def image_callback(self, msg):
         if not isinstance(msg, Image):
             self.get_logger().warn("Message is not type \'Image\'")
             return
 
-        # Peform landmark detection 
+        # Peform hand landmark detection 
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
         frame = cv2.flip(frame, 1)
@@ -45,12 +75,10 @@ class Gestures(Node):
         gesture = self.detect_gesture(landmark_results)
                 
         int_msg = Int32()
-        int_msg.data = gesture
+        int_msg.data = int(gesture)
         
-        # self.get_logger().info(int_msg)
+        self.get_logger().info(int_msg)
 
-        print(gesture)
-        
         self.gesture_publisher.publish(int_msg)
     
     # https://github.com/patience60-svg/gesture-control-ros2
@@ -63,13 +91,15 @@ class Gestures(Node):
             min_tracking_confidence=0.5
         )
     
+    # Convert bgr frame to a rgb frame and runs the model on this frame
     def detect_landmarks(self, frame):
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         result = self.model.process(rgb_frame)
         
         return result
-            
+    
+    # Draw landmarks onto a frame
     def draw_landmarks(self, frame, result):
         multi_hand_landmarks = result.multi_hand_landmarks
         frame_marked = np.copy(frame)
@@ -81,15 +111,41 @@ class Gestures(Node):
         
         return frame_marked
 
+    # 
     def detect_gesture(self, landmark_results):
         multi_hand_landmarks = landmark_results.multi_hand_landmarks
         
         if multi_hand_landmarks is None:
             return -1
         
-        return 0
+        gesture = 0
+        
+        for hand_landmarks in multi_hand_landmarks:
+            extended = []
+                            
+            for points in self.finger_props:
+                extended.append(self.finger_extended(hand_landmarks.landmark[points[0]], hand_landmarks.landmark[points[1]], hand_landmarks.landmark[points[2]], hand_landmarks.landmark[points[3]], points[4]))
+            
+            gestures_matched = np.array(self.finger_gesture_table) == np.array(extended)
+            gesture = np.argmax(np.all(gestures_matched, axis=1))
+        
+        return gesture
 
-    # def finger_extended(self, tip, )
+    # Determine if a finger is extended
+    def finger_extended(self, mcp : NormalizedLandmark, pip : NormalizedLandmark, tip : NormalizedLandmark, refrence : NormalizedLandmark, threshold : float) -> int:
+        tip_pos = np.array([tip.x, tip.y])
+        pip_pos = np.array([pip.x, pip.y])
+        
+        refrence_pos = np.array([refrence.x, refrence.y])
+        mcp_pos = np.array([mcp.x, mcp.y])
+        
+        tip_distance = np.linalg.norm(tip_pos - refrence_pos)
+        pip_distance = np.linalg.norm(pip_pos - refrence_pos)
+        mcp_distance = np.linalg.norm(mcp_pos - refrence_pos)
+                
+        distance = tip_distance - pip_distance
+                
+        return int((distance / mcp_distance) > threshold)
 
     def cleanup(self):
         self.get_logger().info("Gestures Node Shutting Down")
