@@ -21,9 +21,6 @@ class WebcamPublisher(Node):
         
         self.bridge = CvBridge()
         self.capture = cv2.VideoCapture(0)
-        
-        # self.capture.set(3, 640)  # Width
-        # self.capture.set(4, 480)  # Height
     
     # Publishes an image from the webcam
     def image_callback(self):        
@@ -40,14 +37,12 @@ class WebcamPublisher(Node):
         image_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
         
         self.publisher.publish(image_msg)
-        self.get_logger().info("Publishing video frame")
 
     # Clean the node for destruction
     def cleanup(self):
-        self.capture.release()
-        cv2.destroyAllWindows()
-        self.destroy_node()
         self.get_logger().info("Webcam Publisher Node Shutting Down")
+        self.capture.release()
+        self.destroy_node()
 
 #
 # Spin up node 

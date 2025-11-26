@@ -12,12 +12,14 @@ setup(
         ('share/' + package_name + '/resource',
             ['resource/hand_landmarker.task']),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/launch',
+            ['launch/hand_gestures_launch.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='adam',
     maintainer_email='hwvxyeej@gmail.com',
-    description='TODO: Package description',
+    description='Peforms gesture detection with the webcam',
     license='TODO: License declaration',
     extras_require={
         'test': [
