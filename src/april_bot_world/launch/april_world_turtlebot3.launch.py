@@ -1,0 +1,59 @@
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
+from launch_ros.substitutions import FindPackageShare
+import os
+
+
+def generate_launch_description():
+    ros_gz_sim_pkg_path = get_package_share_directory('ros_gz_sim') #ros/gazebo package
+    turtlebot3_gazebo_pkg_path = get_package_share_directory('turtlebot3_gazebo') #turtlebot3_gazebo package
+
+    pkg_path = FindPackageShare('april_bot_world') #current package
+
+    gz_launch_path = PathJoinSubstitution([ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py']) #path to launch file for ros/gazebo sim
+    turtlebot3_spawn_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'spawn_turtlebot3.launch.py']) #path to launch file for spawning turtlebot3
+    turtlebot3_state_publisher_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'robot_state_publisher.launch.py']) #path to turtlebot3 state publisher launch file
+
+    x_pose = LaunchConfiguration('x_pose', default='-2.0') #set the x position of turtlebot
+    y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot
+
+    return LaunchDescription([
+        SetEnvironmentVariable(
+            'GZ_SIM_RESOURCE_PATH',
+            PathJoinSubstitution([pkg_path, 'models'])
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(gz_launch_path),
+            launch_arguments={
+                'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
+                'on_exit_shutdown': 'True'
+            }.items(),
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
+            launch_arguments={
+                'x_pose': x_pose,
+                'y_pose': y_pose
+            }.items(),
+        ),
+
+        # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
+        # Node(
+        #     package='ros_gz_bridge',
+        #     executable='parameter_bridge',
+        #     arguments=['/example_imu_topic@sensor_msgs/msg/Imu@gz.msgs.IMU',],
+        #     remappings=[('/example_imu_topic',
+        #                  '/remapped_imu_topic'),],
+        #     output='screen'
+        # ),
+    ])
