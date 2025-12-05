@@ -17,10 +17,13 @@ class WebcamPublisher(Node):
         self.publisher = self.create_publisher(Image, '/webcam_raw', 10)
     
         # Calls image callback every set time
-        self.timer = self.create_timer(0.01, self.image_callback)
+        self.timer = self.create_timer(0.05, self.image_callback)
         
         self.bridge = CvBridge()
         self.capture = cv2.VideoCapture(0)
+        
+        # https://forum.opencv.org/t/videoio-v4l2-dev-video0-select-timeout/8822/5
+        self.capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     
     # Publishes an image from the webcam
     def image_callback(self):        
