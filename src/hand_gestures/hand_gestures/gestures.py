@@ -46,7 +46,7 @@ class Gestures(Node):
         
         # Sign language finger gestures table
         self.finger_gesture_table = [
-            [0, 0, 0, 0, 0], # undefined
+            [0, 0, 0, 0, 0], # 0 (unknown)
             [0, 1, 0, 0, 0], # 1
             [0, 1, 1, 0, 0], # 2
             [1, 1, 1, 0, 0], # 3
@@ -56,7 +56,8 @@ class Gestures(Node):
             [0, 1, 1, 0, 1], # 7
             [0, 1, 0, 1, 1], # 8
             [0, 0, 1, 1, 1], # 9
-            [1, 0, 0, 0, 0]  # 10
+            [1, 0, 0, 0, 0], # 10
+            [1, 1, 0, 0, 0]  # 11 (cancel)
         ]
 
     # Process message from the image topic and publish gesture data
@@ -184,11 +185,12 @@ def main(args=None):
     try:
         rclpy.spin(gestures)
     except KeyboardInterrupt:
-        return
-    finally:
-        gestures.cleanup()
+        pass
     
-    rclpy.shutdown()
+    gestures.cleanup()
+    
+    if rclpy.ok():
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

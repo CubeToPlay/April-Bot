@@ -13,11 +13,11 @@ from sensor_msgs.msg import Image
 class WebcamPublisher(Node):
     def __init__(self):
         super().__init__('webcam_publisher')
-    
+        
         self.publisher = self.create_publisher(Image, '/webcam_raw', 10)
     
         # Calls image callback every set time
-        self.timer = self.create_timer(0.1, self.image_callback)
+        self.timer = self.create_timer(0.01, self.image_callback)
         
         self.bridge = CvBridge()
         self.capture = cv2.VideoCapture(0)
@@ -55,11 +55,12 @@ def main(args=None):
     try:
         rclpy.spin(webcam_publisher)
     except KeyboardInterrupt:
-        return
-    finally:
-        webcam_publisher.cleanup()
+        pass
     
-    rclpy.shutdown()
+    webcam_publisher.cleanup()
+    
+    if rclpy.ok():
+        rclpy.shutdown()
     
 
 if __name__ == '__main__':
