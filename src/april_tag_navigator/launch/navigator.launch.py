@@ -59,7 +59,7 @@ def generate_launch_description():
 
     navigator_node = Node(
         package='april_tag_navigator',
-        executable='apriltag_navigator',
+        executable='april_tag_navigator',
         name='apriltag_navigator',
         output='screen',
         parameters=[{

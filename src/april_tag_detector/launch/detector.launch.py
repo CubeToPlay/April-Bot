@@ -92,7 +92,7 @@ def generate_launch_description():
     # AprilTag Detector Node
     detector_node = Node(
         package='april_tag_detector',
-        executable='apriltag_detector',
+        executable='april_tag_detector',
         name='apriltag_detector',
         output='screen',
         parameters=[{
