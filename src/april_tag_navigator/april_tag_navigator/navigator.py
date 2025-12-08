@@ -226,7 +226,7 @@ class AprilTagNavigator(Node):
     
     def map_callback(self, msg):
         """Store SLAM map
-        The map metadata (width, height, resolution, etc.) is stored in order for coordinat conversions (between map and world)
+        The map metadata (width, height, resolution, etc.) is stored in order for coordinate conversions (between map and world)
         """
         # Convert the flat array to 2D grid. 
         self.map_data = np.array(msg.data).reshape((msg.info.height, msg.info.width))
