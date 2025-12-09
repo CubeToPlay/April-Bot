@@ -19,17 +19,17 @@ class Goal(Node):
     def gesture_callback(self, msg):
 
         # Checks if timer is started and if the gesture has been up for more than 3 seconds, publishes goal if so
-        if (time.time() - self.initial_time > 3 and self.timer_started == True):
-            self.goal_publisher.publish(self.goal)
+        if ((time.time() - self.initial_time > 2) and (self.timer_started == True) and (msg.data > 0)):
+            self.goal_publisher.publish(msg)
             self.timer_started = False
 
         # Checks if the current goal is the same as the previous goal and if timer is not started yet, starts timer if so
-        if (self.compare_goal(msg) == True and self.timer_started == False):
+        if ((self.compare_goal(msg) == True) and (self.timer_started == False)):
             self.initial_time = time.time()
             self.timer_started = True
         
         # Checks if the current goal is not the same as the previous goal, stops timer if so
-        if (self.compare_goal(msg) == False) :
+        if ((self.compare_goal(msg) == False) or (msg.data < 0)) :
             self.timer_started = False
 
         self.goal = msg
@@ -42,7 +42,7 @@ class Goal(Node):
 
     # Publishes cancel command if the goal has been reached
     def goal_reached_callback(self, msg):
-        if (msg):
+        if (msg.data):
             self.goal_publisher.publish(11)
 
     # Deletes node
