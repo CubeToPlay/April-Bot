@@ -13,20 +13,21 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-# Generate custom messages
+# Generate custom messages FIRST
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/AprilTagDetection.msg"
   "msg/AprilTagDetectionArray.msg"
   DEPENDENCIES geometry_msgs std_msgs
 )
 
-# Install Python modules
+# Install Python package - ONLY ONCE
 ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
   april_tag_detector/detector.py
   DESTINATION lib/${PROJECT_NAME}
+  RENAME detector
 )
 
 # Install launch files
@@ -35,7 +36,7 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-# Install rviz configs
+# Install rviz configs  
 install(DIRECTORY
   rviz
   DESTINATION share/${PROJECT_NAME}/
@@ -45,5 +46,8 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# Export dependencies
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()
