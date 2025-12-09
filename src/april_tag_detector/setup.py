@@ -30,7 +30,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'april_tag_detector = april_tag_detector.AprilTagDetector:main'
+            'april_tag_detector = april_tag_detector.detector:main'
         ],
     },
 )

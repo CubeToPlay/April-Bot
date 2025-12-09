@@ -30,7 +30,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'april_tag_navigator = april_tag_navigator.AprilTagNavigator:main'
+            'april_tag_navigator = april_tag_navigator.navigator:main'
         ],
     },
 )
