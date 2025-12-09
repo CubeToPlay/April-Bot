@@ -37,8 +37,8 @@ def generate_launch_description():
 
     apriltag_navigator_node = Node(
         package='april_tag_navigator',
-        executable='april_tag_navigator',
-        name='apriltag_navigator',
+        executable='navigator',
+        name='navigator',
         output='screen',
         parameters=[{
             'approach_distance': LaunchConfiguration('approach_distance'),

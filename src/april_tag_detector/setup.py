@@ -32,7 +32,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'april_tag_detector = april_tag_detector.detector:main'
+            'detector = april_tag_detector.detector:main',
+            'video_viewer = april_tag_detector.video_viewer:main'
         ],
     },
 )

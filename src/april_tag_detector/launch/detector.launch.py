@@ -36,53 +36,10 @@ def generate_launch_description():
     
     tag_dir_arg = DeclareLaunchArgument(
         'tag_dir',
-        default_value='',
+        default_value='April-Bot/src/april_bot_world/models/april_tag_models',
         description='Directory containing AprilTag template images'
     )
-    
-    # Navigator Parameters
-    approach_distance_arg = DeclareLaunchArgument(
-        'approach_distance',
-        default_value='0.5',
-        description='Distance to approach AprilTag (meters)'
-    )
-    
-    linear_speed_arg = DeclareLaunchArgument(
-        'linear_speed',
-        default_value='0.2',
-        description='Maximum linear speed (m/s)'
-    )
-    
-    angular_speed_arg = DeclareLaunchArgument(
-        'angular_speed',
-        default_value='0.5',
-        description='Maximum angular speed (rad/s)'
-    )
-    
-    waypoint_tolerance_arg = DeclareLaunchArgument(
-        'waypoint_tolerance',
-        default_value='0.3',
-        description='Waypoint reaching tolerance (meters)'
-    )
-    
-    tag_database_path_arg = DeclareLaunchArgument(
-        'tag_database_path',
-        default_value='discovered_tags.json',
-        description='Path to tag database file'
-    )
-    
-    frontier_grid_size_arg = DeclareLaunchArgument(
-        'frontier_grid_size',
-        default_value='0.5',
-        description='Frontier exploration grid size (meters)'
-    )
-    
-    cancel_command_arg = DeclareLaunchArgument(
-        'cancel_command',
-        default_value='11',
-        description='Goal ID that cancels current navigation'
-    )
-    
+
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
         default_value='true',
@@ -92,8 +49,8 @@ def generate_launch_description():
     # AprilTag Detector Node
     detector_node = Node(
         package='april_tag_detector',
-        executable='april_tag_detector',
-        name='apriltag_detector',
+        executable='detector',
+        name='detector',
         output='screen',
         parameters=[{
             'tag_size': LaunchConfiguration('tag_size'),
@@ -102,22 +59,17 @@ def generate_launch_description():
             'publish_tf': LaunchConfiguration('publish_tf'),
             'tag_dir': LaunchConfiguration('tag_dir'),
             'use_sim_time': LaunchConfiguration('use_sim_time'),
-        }],
-        remappings=[
-            ('/camera/image_raw', LaunchConfiguration('camera_topic')),
-            ('/camera/camera_info', LaunchConfiguration('camera_info_topic')),
-        ]
-    )
-
-    image_view_node = Node(
-        package='rqt_image_view',
-        executable='rqt_image_view',
-        name='camera_viewer',
-        arguments=['/apriltag_detections_image'],
-        parameters=[{
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
         }]
     )
+
+    video_view_node = Node(
+        package='april_tag_detector',
+        executable='video_viewer',
+        name='video_viewer',
+        output='screen',
+        parameters=[]
+    )
+
 
     return LaunchDescription([
         # Launch arguments
@@ -126,16 +78,9 @@ def generate_launch_description():
         camera_info_topic_arg,
         publish_tf_arg,
         tag_dir_arg,
-        approach_distance_arg,
-        linear_speed_arg,
-        angular_speed_arg,
-        waypoint_tolerance_arg,
-        tag_database_path_arg,
-        frontier_grid_size_arg,
-        cancel_command_arg,
         use_sim_time_arg,
         
         # Nodes
         detector_node,
-        image_view_node,
+        video_view_node,
     ])

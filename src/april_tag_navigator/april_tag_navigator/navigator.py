@@ -30,7 +30,7 @@ class NavigationState(Enum):
 class AprilTagNavigator(Node):
     """Uses A* algorithm for path planning to get the robot to move to the given goal id. If it knows where the tag is, it will go directly there, otherwise it will begin searching for the april tag in unexplored locations"""
     def __init__(self):
-        super().__init__('apriltag_navigator')
+        super().__init__('navigator')
 
         # Parameters
         self.declare_parameter('approach_distance', 0.5)
