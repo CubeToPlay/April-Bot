@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 import os
-import glob as glob
+import glob
 
 package_name = 'april_bot_world'
 
@@ -11,9 +11,20 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
-        (os.path.join('share', package_name), ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob.glob(os.path.join('launch', '*.launch.py'))),
-        (os.path.join('share', package_name, 'worlds'), glob.glob(os.path.join('worlds', '*.sdf'))),
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name + '/worlds', 
+            ['worlds/apriltag_world.sdf']),
+        ('share/' + package_name + '/launch', 
+            ['launch/april_world_turtlebot3.launch.py']),
+        ('share/' + package_name, ['package.xml']),
+        # https://stackoverflow.com/questions/27829754/include-entire-directory-in-python-setup-py-data-files
+        ('share/' + package_name + '/models', 
+            glob.glob('models/april_tag_models/*')),
+        ('share/' + package_name + '/models', 
+            glob.glob('models/rock_test/*')),
+        ('share/' + package_name + '/models', 
+            ['models/worldwalls.dae']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

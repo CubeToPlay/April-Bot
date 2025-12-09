@@ -71,14 +71,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_0.dae</uri>
+              <uri>model://apriltag_id_0.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_0.dae</uri>
+              <uri>model://apriltag_id_0.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -106,14 +106,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_1.dae</uri>
+              <uri>model://apriltag_id_1.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_1.dae</uri>
+              <uri>model://apriltag_id_1.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -141,14 +141,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_2.dae</uri>
+              <uri>model://apriltag_id_2.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_2.dae</uri>
+              <uri>model://apriltag_id_2.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -176,14 +176,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_3.dae</uri>
+              <uri>model://apriltag_id_3.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_3.dae</uri>
+              <uri>model://apriltag_id_3.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -211,14 +211,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_4.dae</uri>
+              <uri>model://apriltag_id_4.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/april_tag_models/apriltag_id_4.dae</uri>
+              <uri>model://apriltag_id_4.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -246,14 +246,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/rock_test/RockCubeTest.dae</uri>
+              <uri>model://RockCubeTest.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/rock_test/RockCubeTest.dae</uri>
+              <uri>model://RockCubeTest.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -281,14 +281,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/worldwalls.dae</uri>
+              <uri>model://worldwalls.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/awan0888/April-Bot/src/april_bot_world/models/worldwalls.dae</uri>
+              <uri>model://worldwalls.dae</uri>
             </mesh>
           </geometry>
         </collision>

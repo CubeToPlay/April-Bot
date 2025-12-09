@@ -5,7 +5,6 @@ from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
-import os
 
 
 def generate_launch_description():
@@ -19,12 +18,22 @@ def generate_launch_description():
     turtlebot3_state_publisher_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'robot_state_publisher.launch.py']) #path to turtlebot3 state publisher launch file
 
     x_pose = LaunchConfiguration('x_pose', default='-2.0') #set the x position of turtlebot
-    y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot
+    y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
 
     return LaunchDescription([
         SetEnvironmentVariable(
             'GZ_SIM_RESOURCE_PATH',
             PathJoinSubstitution([pkg_path, 'models'])
+        ),
+        
+        SetEnvironmentVariable(
+            'GAZEBO_MODEL_PATH',
+            PathJoinSubstitution([pkg_path, 'models'])
+        ),
+        
+        SetEnvironmentVariable(
+            'TURTLEBOT3_MODEL',
+            'waffle'
         ),
 
         IncludeLaunchDescription(
