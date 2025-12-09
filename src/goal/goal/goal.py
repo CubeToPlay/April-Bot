@@ -12,14 +12,17 @@ class Goal(Node):
         self.goal_subscriber = self.create_subscription(Bool, '/reach_goal', self.goal_reached_callback, 1)
         self.goal_publisher = self.create_publisher(Int32, '/goal_id', 10)
 
+        self.gesture_time = 2 # Sets how long the gesture needs to be held up (in seconds)
         self.initial_time = 0
         self.timer_started = False
         self.goal = -1 # Default to no gesture detected
 
+    # Uses a timer to time how long a gesture has been held up. If the gesture has been held up for longer than gesture_time
+    # then that gesture's /goal_id will be published
     def gesture_callback(self, msg):
 
         # Checks if timer is started and if the gesture has been up for more than 3 seconds, publishes goal if so
-        if ((time.time() - self.initial_time > 2) and (self.timer_started == True) and (msg.data > 0)):
+        if ((time.time() - self.initial_time > self.gesture_time) and (self.timer_started == True) and (msg.data > 0)):
             self.goal_publisher.publish(msg)
             self.timer_started = False
 
@@ -40,7 +43,7 @@ class Goal(Node):
             return True
         return False
 
-    # Publishes cancel command if the goal has been reached
+    # Publishes cancel command if the goal has been reached (True received from msg)
     def goal_reached_callback(self, msg):
         if (msg.data):
             self.goal_publisher.publish(11)
