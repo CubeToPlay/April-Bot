@@ -16,6 +16,8 @@ setup(
             glob('config/*.yaml')),
         (os.path.join('share', package_name, 'launch'),
             glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'msg'),
+            glob('msg/*.msg')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
