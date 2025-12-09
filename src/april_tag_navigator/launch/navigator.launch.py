@@ -52,6 +52,16 @@ def generate_launch_description():
         emulate_tty=True
     )
 
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        parameters=[{
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+        }]
+    )
+
     ld = LaunchDescription()
 
     # Add declared arguments so they show up for ros2 launch overrides
@@ -65,5 +75,6 @@ def generate_launch_description():
 
     # Add node
     ld.add_action(apriltag_navigator_node)
+    ld.add_action(rviz_node)
 
     return ld
