@@ -34,6 +34,11 @@ def generate_launch_description():
         'cancel_command', default_value='11',
         description='Goal id value used to cancel current mission'
     )
+    use_sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulation time'
+    )
 
     apriltag_navigator_node = Node(
         package='april_tag_navigator',
@@ -72,6 +77,7 @@ def generate_launch_description():
     ld.add_action(tag_database_path_arg)
     ld.add_action(frontier_grid_size_arg)
     ld.add_action(cancel_command_arg)
+    ld.add_action(use_sim_time_arg)
 
     # Add node
     ld.add_action(apriltag_navigator_node)
