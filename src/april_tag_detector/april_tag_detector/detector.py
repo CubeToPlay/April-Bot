@@ -79,12 +79,12 @@ class AprilTagDetector(Node):
         AprilTag format: tag36h11-<id>.png
         """
         # Check if directory exists
-        if not os.path.exists(self.tags):
-            self.get_logger().warn(f'Template directory not found: {self.tags}')
+        if not os.path.exists(self.tag_dir):
+            self.get_logger().warn(f'Template directory not found: {self.tag_dir}')
             return
         # It is looking for files that match the pattern: tag36h11-<id>.png
         # For each tag image, it extracts the id from the filename, loads it in grayscale, resizes it to 300 x 300, applies Otsu's thresholding to create a binary image, generates 4 rotations of the image, and stores it in the self.tags dictionary
-        for filename in os.listdir(self.tags):
+        for filename in os.listdir(self.tag_dir):
             if filename.startswith('tag36h11-') and (filename.endswith('.png')):
                 # Extract ID from filename
                 try:
@@ -92,7 +92,7 @@ class AprilTagDetector(Node):
                 except:
                     self.get_logger().warn(f'Could not parse tag ID from: {filename}')
                     continue
-                filepath = os.path.join(self.tags, filename)
+                filepath = os.path.join(self.tag_dir, filename)
                 image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
 
                 if image is not None:
