@@ -171,13 +171,14 @@ class AprilTagNavigator(Node):
         for detection in msg.detections:
             # Get tag_id and then add it to the current_detections with its pose
             tag_id = detection.id
+            tag_frame = f"apriltag_{tag_id}"
             self.current_detections[tag_id] = {
                 'pose': detection.pose
             }
             try:
                 # Use tf in order to fine the [x,y,z] coordinates for the seen AprilTag
                 transform = self.tf_buffer.lookup_transform(
-                'map', detection.id,
+                'map', tag_frame,
                 rclpy.time.Time(),
                 timeout=rclpy.duration.Duration(seconds=0.1)
                 )
