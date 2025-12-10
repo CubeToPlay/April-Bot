@@ -10,11 +10,11 @@ import numpy as np
 import math
 import os
 
-from april_tag_detector.msg import AprilTagDetection, AprilTagDetectionArray
+from april_tag_msgs.msg import AprilTagDetection, AprilTagDetectionArray
 
 class AprilTagDetector(Node):
     def __init__(self):
-        super().__init__('apriltag_detector')
+        super().__init__('detector')
         
         self.declare_parameter('tag_size', 0.16)
         self.declare_parameter('camera_topic', '/camera/image_raw')

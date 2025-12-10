@@ -12,7 +12,7 @@ import json
 import os
 import heapq
 
-from april_tag_detector.msg import AprilTagDetection, AprilTagDetectionArray
+from april_tag_msgs.msg import AprilTagDetection, AprilTagDetectionArray
 
 class NavigationState(Enum):
     """Indicates what the robot is currently doing"""
