@@ -57,12 +57,21 @@ def generate_launch_description():
         ),
 
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
-        # Node(
-        #     package='ros_gz_bridge',
-        #     executable='parameter_bridge',
-        #     arguments=['/example_imu_topic@sensor_msgs/msg/Imu@gz.msgs.IMU',],
-        #     remappings=[('/example_imu_topic',
-        #                  '/remapped_imu_topic'),],
-        #     output='screen'
-        # ),
+        Node(
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
+            arguments=[
+                '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+                '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
+                '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
+                '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
+                '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
+                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+            ],
+            remappings=[
+                ('/camera/image_raw', '/camera/image_raw'),
+                ('/camera/camera_info', '/camera/camera_info'),
+            ],
+            output='screen'
+                ),
     ])
