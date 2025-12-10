@@ -3,6 +3,7 @@ from launch.actions import IncludeLaunchDescription
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
+# https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html#writing-launch-files
 def generate_launch_description():
     april_bot_world_launch_dir = PathJoinSubstitution([FindPackageShare('april_bot_world'), 'launch'])
     goal_launch_dir = PathJoinSubstitution([FindPackageShare('goal'), 'launch'])
