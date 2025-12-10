@@ -3,7 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist, PoseStamped, TwistStamped
 from nav_msgs.msg import OccupancyGrid, Path
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
 import numpy as np
 import math
@@ -90,7 +90,7 @@ class AprilTagNavigator(Node):
         """Publishes velocity commands to robot."""
         self.path_pub = self.create_publisher(Path, '/planned_path', 10)
         """Publishes A* path for visualization in RViz. Used for debugging path."""
-        self.reach_goal_pub = self.create_publisher(bool, '/reach_goal', 10)
+        self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
 
 
