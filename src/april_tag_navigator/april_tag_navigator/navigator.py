@@ -633,7 +633,10 @@ def main(args=None):
     finally:
         navigator.save_tag_database()
         twist = Twist()
-        navigator.cmd_vel_pub.publish(twist)
+        msg_stamped = TwistStamped()
+        msg_stamped.header.stamp = navigator.get_clock().now().to_msg()
+        msg_stamped.twist = twist
+        navigator.cmd_vel_pub.publish(msg_stamped)
         navigator.destroy_node()
         rclpy.shutdown()
 
