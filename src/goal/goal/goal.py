@@ -32,9 +32,11 @@ class Goal(Node):
         if (((time.time() - self.initial_time) > self.gesture_time) and self.timer_started):
             self.get_logger().info(f"Gesture {gesture} chosen")
             if (not self.waiting_for_completion) or (gesture == 11):
-                self.get_logger().info(f"Publishing {gesture}")
+                self.get_logger().info(f"Publishing gesture {gesture}")
                 self.goal_publisher.publish(msg)
                 self.waiting_for_completion = True
+            else:
+                self.get_logger().info("Cannot publish gesture. Waiting until goal reached")
             
             self.timer_started = False
         
