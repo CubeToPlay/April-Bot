@@ -547,7 +547,7 @@ class AprilTagDetector(Node):
             return
         
         # Detect tags
-        detected_tags = self.detect_apriltags_cv(cv_image)
+        detected_tags = self.detect_apriltags(cv_image)
         
         # Create visualization
         vis_image = cv_image.copy()
