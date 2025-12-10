@@ -69,14 +69,12 @@ class VideoView(Node):
         """Process current frame with current HSV settings and display."""
         if self.current_frame is None and self.current_apriltag_frame is None:
             return
-
         if self.current_frame is None:
             display = self.current_apriltag_frame
         elif self.current_apriltag_frame is None:
             display = self.current_frame
         else:
-            # Stack images horizontally
-            display = np.hstack([self.current_frame, self.current_apriltag_frame])
+            display = self.current_apriltag_frame
         
         cv2.imshow(self.window_name, display)
 
