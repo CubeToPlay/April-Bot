@@ -55,12 +55,6 @@ def generate_launch_description():
                 'y_pose': y_pose
             }.items(),
         ),
-        # Node(
-        #     package='april_bot_world',
-        #     executable='odom_tf_broadcaster',
-        #     name='odom_tf_broadcaster',
-        #     output='screen'
-        # ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -76,7 +70,7 @@ def generate_launch_description():
             executable='parameter_bridge',
             arguments=[
                 '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+                '/cmd_vel@geometry_msgs/msg/TwistStamped@gz.msgs.TwistStamped',
                 '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
 
             ],
