@@ -55,6 +55,12 @@ def generate_launch_description():
                 'y_pose': y_pose
             }.items(),
         ),
+        Node(
+            package='april_bot_world',
+            executable='odom_tf_broadcaster',
+            name='odom_tf_broadcaster',
+            output='screen'
+        ),
 
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
