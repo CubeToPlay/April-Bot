@@ -66,7 +66,7 @@ def generate_launch_description():
                 '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
                 '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
                 '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.TwistStamped',
             ],
             remappings=[
                 ('/camera/image_raw', '/camera/image_raw'),
