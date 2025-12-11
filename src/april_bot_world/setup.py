@@ -39,6 +39,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'odom_tf_broadcaster = april_bot_world.odom_tf_broadcaster:main',
         ],
     },
 )
