@@ -32,11 +32,6 @@ class AprilTagNavigator(Node):
     def __init__(self):
         super().__init__('navigator')
 
-        self.declare_parameter('use_sim_time', True)
-        use_sim = self.get_parameter('use_sim_time').value
-        self.get_logger().info(f'use_sim_time is: {use_sim}')
-
-
         # Parameters
         self.declare_parameter('approach_distance', 0.5)
         self.declare_parameter('linear_speed', 0.2)
@@ -62,6 +57,11 @@ class AprilTagNavigator(Node):
         """When goal_id = 11, it means that the current search should be cancelled and the robot should be idle."""
 
         # TF2 for SLAM localization
+        try:
+            use_sim = self.get_parameter('use_sim_time').value
+            self.get_logger().info(f'use_sim_time: {use_sim}')
+        except:
+            self.get_logger().warn('use_sim_time not set!')
         self.tf_buffer = Buffer(cache_time=rclpy.duration.Duration(seconds=10.0))
         """Stores the last set of transformations"""
         self.tf_listener = TransformListener(self.tf_buffer, self)
