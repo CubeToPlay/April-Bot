@@ -61,6 +61,14 @@ def generate_launch_description():
         #     name='odom_tf_broadcaster',
         #     output='screen'
         # ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='odom_to_base_footprint',
+            output='screen',
+            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_footprint'],
+            parameters=[{'use_sim_time': True}]
+        ),
 
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
