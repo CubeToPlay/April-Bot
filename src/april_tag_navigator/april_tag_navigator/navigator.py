@@ -32,6 +32,9 @@ class AprilTagNavigator(Node):
     def __init__(self):
         super().__init__('navigator')
 
+        self.declare_parameter('use_sim_time', True)
+
+
         # Parameters
         self.declare_parameter('approach_distance', 0.5)
         self.declare_parameter('linear_speed', 0.2)
@@ -61,6 +64,8 @@ class AprilTagNavigator(Node):
         """Stores the last set of transformations"""
         self.tf_listener = TransformListener(self.tf_buffer, self)
         """Receives and stores transforms that were published on the /tf topic"""
+        self.tf_ready = False
+        """Used to avoid map errors"""
 
         # Subscribers
         self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
@@ -142,17 +147,48 @@ class AprilTagNavigator(Node):
         self.laser_ranges = None
         """Array of distance measurements from LiDAR"""
 
-        self.pose_timer = self.create_timer(0.2, self.update_robot_pose)
+        # Timers
+        self.startup_timer = self.create_timer(1.0, self.wait_for_startup)
+        """Timer to wait for everything to startup correctly"""
+
+        self.pose_timer = None
         """Timer to update the robot pose every 0.2 secconds"""
 
-        self.exploration_timer = self.create_timer(1.0, self.mark_explored)
+        self.exploration_timer = None
         """Timer to mark current grid as explored as the robot is running"""
 
-        self.nav_timer = self.create_timer(0.1, self.navigation_loop)
+        self.nav_timer = None
         """Timer to run the navigation loop to move the robot"""
+        
+        
         
         # Load database
         self.load_tag_database()
+    
+    def wait_for_startup(self):
+        """Wait for simulation and TF to be ready"""
+        try:
+            self.tf_buffer.lookup_transform(
+                'odom', 'base_footprint',
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.1)
+            )
+            
+            self.get_logger().info('TF is ready! Starting navigation timers...')
+            self.tf_ready = True
+            
+            # Now start the real timers
+            self.pose_timer = self.create_timer(0.2, self.update_robot_pose)
+            self.exploration_timer = self.create_timer(1.0, self.mark_explored)
+            self.nav_timer = self.create_timer(0.1, self.navigation_loop)
+            
+            # Cancel this startup timer
+            self.startup_timer.cancel()
+        except TransformException:
+            self.get_logger().info(
+                'Waiting for odom->base_footprint transform...',
+                throttle_duration_sec=2.0
+            )
 
     def goal_callback(self, msg):
         """Receive target tag ID"""
@@ -214,6 +250,8 @@ class AprilTagNavigator(Node):
 
     def update_robot_pose(self):
         """Get robot pose from SLAM"""
+        if not self.tf_ready:
+            return
         try:
             transform = self.tf_buffer.lookup_transform(
                 'map', 'base_footprint',
@@ -237,18 +275,24 @@ class AprilTagNavigator(Node):
             )
             try:
                 # Check if odom->base_footprint exists (should be from Gazebo)
-                odom_transform = self.tf_buffer.lookup_transform(
+                transform = self.tf_buffer.lookup_transform(
                     'odom', 'base_footprint',
                     rclpy.time.Time(),
                     timeout=rclpy.duration.Duration(seconds=0.5)
                 )
+                self.robot_pose = {
+                    'x': transform.transform.translation.x,
+                    'y': transform.transform.translation.y,
+                    'orientation': transform.transform.rotation
+                }
                 self.get_logger().info(
-                    'odom->base_footprint exists but map->odom might be missing',
+                    'Using odom frame (SLAM not ready yet)',
                     throttle_duration_sec=5.0
                 )
-            except TransformException:
-                self.get_logger().error(
-                    'Even odom->base_footprint is missing! Check if robot spawned correctly.',
+                
+            except TransformException as ex:
+                self.get_logger().warn(
+                    f'Could not get robot pose: {ex}',
                     throttle_duration_sec=5.0
                 )
     
