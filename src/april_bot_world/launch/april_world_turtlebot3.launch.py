@@ -86,7 +86,7 @@ def generate_launch_description():
             name='ekf_filter_node',
             output='screen',
             parameters=[{
-                'use_sim_time': False,
+                'use_sim_time': True,
                 'frequency': 30.0,
                 'sensor_timeout': 0.1,
                 'two_d_mode': True,
@@ -120,7 +120,7 @@ def generate_launch_description():
                 'map_frame': 'map',
                 'base_frame': 'base_footprint',
                 'scan_topic': '/scan',
-                'use_sim_time': False,
+                'use_sim_time': True,
             }]
         ),
     ])
