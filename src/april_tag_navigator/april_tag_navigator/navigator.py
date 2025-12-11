@@ -171,6 +171,7 @@ class AprilTagNavigator(Node):
 
         # Need to clear out all perviously seen tags before listing the newly seen ones
         self.current_detections = {}
+        self.target_tag_visible = False
         for detection in msg.detections:
             # Get tag_id and then add it to the current_detections with its pose
             tag_id = detection.id
@@ -433,8 +434,9 @@ class AprilTagNavigator(Node):
         # Returns the nearest frontier (by distance) if there are any unexplored locations left
         if candidates:
             candidates.sort()
+            self.get_logger().info(f"Candidates: {candidates[0][1]}, {candidates[0][2]}")
             return {'x': candidates[0][1], 'y': candidates[0][2]}
-        
+        self.get_logger().info(f"No frontier candidates")
         return None
     
     def publish_path(self, path):
@@ -558,7 +560,7 @@ class AprilTagNavigator(Node):
                         self.get_logger().info('Exploring frontier')
                 else:
                     self.get_logger().warn('No frontier found')
-                    self.state = NavigationState.IDLE
+                    self.state = NavigationState.PLANNING
 
         elif self.state == NavigationState.NAVIGATING:
             # If the target tag is visible, then the robot should start TRACKING the tag and move directly to it.
