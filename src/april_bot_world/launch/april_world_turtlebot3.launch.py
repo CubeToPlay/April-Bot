@@ -86,6 +86,9 @@ def generate_launch_description():
                 'base_frame': 'base_footprint',
                 'scan_topic': '/scan',
                 'use_sim_time': True,
+                'tf_buffer_duration': 30.0,
+                'transform_timeout': 0.2,
+                'transform_publish_period': 0.02,
             }]
         ),
     ])

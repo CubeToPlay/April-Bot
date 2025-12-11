@@ -162,8 +162,6 @@ class AprilTagNavigator(Node):
         self.nav_timer = None
         """Timer to run the navigation loop to move the robot"""
         
-        
-        
         # Load database
         self.load_tag_database()
     
