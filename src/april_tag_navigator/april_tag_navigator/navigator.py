@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist, PoseStamped, TwistStamped
-from nav_msgs.msg import OccupancyGrid, Path
+from nav_msgs.msg import OccupancyGrid, Path, Odometry
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
 import numpy as np
@@ -84,6 +84,12 @@ class AprilTagNavigator(Node):
             float32[8] corners
             float32 size 
         """
+        self.create_subscription(
+            Odometry,
+            '/odom',
+            self.odom_callback,
+            10
+        )
 
         # Publishers
         self.cmd_vel_pub = self.create_publisher(TwistStamped, '/cmd_vel', 10)
@@ -142,7 +148,7 @@ class AprilTagNavigator(Node):
         self.laser_ranges = None
         """Array of distance measurements from LiDAR"""
 
-        self.pose_timer = self.create_timer(0.2, self.update_robot_pose)
+        # self.pose_timer = self.create_timer(0.2, self.update_robot_pose)
         """Timer to update the robot pose every 0.2 secconds"""
 
         self.exploration_timer = self.create_timer(1.0, self.mark_explored)
@@ -212,6 +218,14 @@ class AprilTagNavigator(Node):
                 )
                 self.target_tag_angle = math.degrees(math.atan2(pose.position.y, pose.position.x))
 
+    def odom_callback(self, msg):
+        """Update robot pose through odometry"""
+        self.robot_pose = {
+                'x': msg.pose.pose.position.x,
+                'y': msg.pose.pose.position.y,
+                'orientation': msg.pose.pose.orientation
+            }
+        self.get_logger().info(f"Pose: {self.robot_pose}")
     def update_robot_pose(self):
         """Get robot pose from SLAM"""
         try:
