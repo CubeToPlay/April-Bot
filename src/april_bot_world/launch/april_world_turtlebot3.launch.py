@@ -79,5 +79,48 @@ def generate_launch_description():
                 ('/camera/camera_info', '/camera/camera_info'),
             ],
             output='screen'
-                ),
+        ),
+        Node(
+            package='robot_localization',
+            executable='ekf_node',
+            name='ekf_filter_node',
+            output='screen',
+            parameters=[{
+                'use_sim_time': False,
+                'frequency': 30.0,
+                'sensor_timeout': 0.1,
+                'two_d_mode': True,
+                'odom_frame': 'odom',
+                'base_link_frame': 'base_footprint',
+                'world_frame': 'odom',
+                'publish_tf': True,
+                'odom0': '/odom',  # Your wheel odometry topic
+                'odom0_config': [True, True, False,
+                                 False, False, True,
+                                 True, True, False,
+                                 False, False, True,
+                                 False, False, False],
+                'imu0': '/imu',  # Your IMU topic
+                'imu0_config': [False, False, False,
+                                True, True, True,
+                                False, False, False,
+                                True, True, True,
+                                True, True, True],
+            }]
+        ),
+        
+        # SLAM Toolbox
+        Node(
+            package='slam_toolbox',
+            executable='async_slam_toolbox_node',
+            name='slam_toolbox',
+            output='screen',
+            parameters=[{
+                'odom_frame': 'odom',
+                'map_frame': 'map',
+                'base_frame': 'base_footprint',
+                'scan_topic': '/scan',
+                'use_sim_time': False,
+            }]
+        ),
     ])
