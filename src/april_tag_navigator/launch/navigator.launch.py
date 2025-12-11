@@ -1,87 +1,98 @@
-# apriltag_navigator_launch.py
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, EmitEvent, RegisterEventHandler
+from launch.event_handlers import OnProcessStart
+from launch.events import matches_action
+from launch_ros.actions import LifecycleNode, Node
+from launch_ros.event_handlers import OnStateTransition
+from launch_ros.events.lifecycle import ChangeState
+from lifecycle_msgs.msg import Transition
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+import os
+from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    # Launch arguments (can be overridden at runtime)
-    approach_distance_arg = DeclareLaunchArgument(
-        'approach_distance', default_value='0.5',
-        description='How close the robot must get to the tag to consider it approached'
-    )
-    linear_speed_arg = DeclareLaunchArgument(
-        'linear_speed', default_value='0.2',
-        description='Max linear speed (m/s)'
-    )
-    angular_speed_arg = DeclareLaunchArgument(
-        'angular_speed', default_value='0.5',
-        description='Max angular speed (rad/s)'
-    )
-    waypoint_tolerance_arg = DeclareLaunchArgument(
-        'waypoint_tolerance', default_value='0.3',
-        description='Waypoint acceptance radius (m)'
-    )
-    tag_database_path_arg = DeclareLaunchArgument(
-        'tag_database_path', default_value='discovered_tags.json',
-        description='Path to saved tag database file'
-    )
-    frontier_grid_size_arg = DeclareLaunchArgument(
-        'frontier_grid_size', default_value='0.5',
-        description='Resolution of exploration grid (m)'
-    )
-    cancel_command_arg = DeclareLaunchArgument(
-        'cancel_command', default_value='11',
-        description='Goal id value used to cancel current mission'
-    )
-    use_sim_time_arg = DeclareLaunchArgument(
-        'use_sim_time',
-        default_value='true',
-        description='Use simulation time'
-    )
+    
+    pkg_dir = get_package_share_directory('april_tag_navigator')
+    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
+    slam_params_file = os.path.join(pkg_dir, 'config', 'slam_params.yaml')
 
-    apriltag_navigator_node = Node(
+    navigator_node = Node(
         package='april_tag_navigator',
         executable='navigator',
         name='navigator',
         output='screen',
         parameters=[{
-            'approach_distance': LaunchConfiguration('approach_distance'),
-            'linear_speed': LaunchConfiguration('linear_speed'),
-            'angular_speed': LaunchConfiguration('angular_speed'),
-            'waypoint_tolerance': LaunchConfiguration('waypoint_tolerance'),
-            'tag_database_path': LaunchConfiguration('tag_database_path'),
-            'frontier_grid_size': LaunchConfiguration('frontier_grid_size'),
-            'cancel_command': LaunchConfiguration('cancel_command'),
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
-        }],
-        emulate_tty=True
+            'use_sim_time': use_sim_time,
+            'approach_distance': 0.5,
+            'linear_speed': 0.2,
+            'angular_speed': 0.5,
+            'waypoint_tolerance': 0.3,
+            'frontier_grid_size': 0.5,
+            'cancel_command': 11
+        }]
     )
 
+    slam_toolbox_node = LifecycleNode(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        namespace='',
+        output='screen',
+        parameters=[
+            slam_params_file,  # Use config file
+            {'use_sim_time': use_sim_time}
+        ],
+        remappings=[
+            ('/scan', '/scan')
+        ]
+    )
+
+    # Automatically configure SLAM Toolbox on startup
+    configure_slam = EmitEvent(
+        event=ChangeState(
+            lifecycle_node_matcher=matches_action(slam_toolbox_node),
+            transition_id=Transition.TRANSITION_CONFIGURE,
+        )
+    )
+    
+    # Automatically activate SLAM Toolbox after configuration
+    activate_slam = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node=slam_toolbox_node,
+            goal_state='inactive',
+            entities=[
+                EmitEvent(
+                    event=ChangeState(
+                        lifecycle_node_matcher=matches_action(slam_toolbox_node),
+                        transition_id=Transition.TRANSITION_ACTIVATE,
+                    )
+                ),
+            ],
+        )
+    )
+    
+    # Emit configure event when SLAM node starts
+    emit_configure_on_start = RegisterEventHandler(
+        OnProcessStart(
+            target_action=slam_toolbox_node,
+            on_start=[configure_slam],
+        )
+    )
+    
+    # RViz node
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        output='screen',
-        parameters=[{
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
-        }]
+        arguments= [],
+        parameters=[{'use_sim_time': use_sim_time}]
     )
-
-    ld = LaunchDescription()
-
-    # Add declared arguments so they show up for ros2 launch overrides
-    ld.add_action(approach_distance_arg)
-    ld.add_action(linear_speed_arg)
-    ld.add_action(angular_speed_arg)
-    ld.add_action(waypoint_tolerance_arg)
-    ld.add_action(tag_database_path_arg)
-    ld.add_action(frontier_grid_size_arg)
-    ld.add_action(cancel_command_arg)
-    ld.add_action(use_sim_time_arg)
-
-    # Add node
-    ld.add_action(apriltag_navigator_node)
-    ld.add_action(rviz_node)
-
-    return ld
+    
+    return LaunchDescription([
+        DeclareLaunchArgument('use_sim_time', default_value='true'),
+        slam_toolbox_node,
+        emit_configure_on_start,
+        activate_slam,
+        navigator_node,
+        rviz_node,
+    ])

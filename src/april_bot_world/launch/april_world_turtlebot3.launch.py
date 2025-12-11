@@ -82,48 +82,4 @@ def generate_launch_description():
             ],
             output='screen'
         ),
-        # SLAM Toolbox
-        Node(
-            package='slam_toolbox',
-            executable='async_slam_toolbox_node',
-            name='slam_toolbox',
-            output='screen',
-            parameters=[{
-                # Frame configuration
-                'odom_frame': 'odom',
-                'map_frame': 'map',
-                'base_frame': 'base_footprint',
-                'scan_topic': '/scan',
-                'use_sim_time': True,
-                
-                # Basic settings
-                'mode': 'mapping',
-                'resolution': 0.05,
-                'max_laser_range': 20.0,
-                'minimum_time_interval': 0.5,
-                
-                # Movement thresholds
-                'minimum_travel_distance': 0.5,
-                'minimum_travel_heading': 0.5,
-                
-                # Performance
-                'map_update_interval': 5.0,
-                'transform_publish_period': 0.02,
-                'transform_timeout': 0.2,
-                'tf_buffer_duration': 30.0,
-                
-                # Scan matching
-                'scan_buffer_size': 10,
-                'link_match_minimum_response_fine': 0.1,
-                'link_scan_maximum_distance': 1.5,
-                
-                # Loop closure
-                'do_loop_closing': True,
-                'loop_search_maximum_distance': 3.0,
-                
-                # Solver
-                'solver_plugin': 'solver_plugins::CeresSolver',
-                'ceres_linear_solver': 'SPARSE_NORMAL_CHOLESKY',
-            }]
-        ),
     ])
