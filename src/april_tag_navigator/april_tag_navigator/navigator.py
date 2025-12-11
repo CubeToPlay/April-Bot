@@ -230,7 +230,7 @@ class AprilTagNavigator(Node):
                 f"Pose: ({self.robot_pose['x']:.2f}, {self.robot_pose['y']:.2f})",
                 throttle_duration_sec=2.0
             )
-        except TransformException:
+        except TransformException as ex:
             self.get_logger().warn(
                 f'Could not transform map to base_footprint: {ex}',
                 throttle_duration_sec=5.0
