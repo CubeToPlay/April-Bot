@@ -226,9 +226,31 @@ class AprilTagNavigator(Node):
                 'y': transform.transform.translation.y,
                 'orientation': transform.transform.rotation
             }
-            self.get_logger().info(f"Pose: {self.robot_pose}")
+            self.get_logger().info(
+                f"Pose: ({self.robot_pose['x']:.2f}, {self.robot_pose['y']:.2f})",
+                throttle_duration_sec=2.0
+            )
         except TransformException:
-            pass
+            self.get_logger().warn(
+                f'Could not transform map to base_footprint: {ex}',
+                throttle_duration_sec=5.0
+            )
+            try:
+                # Check if odom->base_footprint exists (should be from Gazebo)
+                odom_transform = self.tf_buffer.lookup_transform(
+                    'odom', 'base_footprint',
+                    rclpy.time.Time(),
+                    timeout=rclpy.duration.Duration(seconds=0.5)
+                )
+                self.get_logger().info(
+                    'odom->base_footprint exists but map->odom might be missing',
+                    throttle_duration_sec=5.0
+                )
+            except TransformException:
+                self.get_logger().error(
+                    'Even odom->base_footprint is missing! Check if robot spawned correctly.',
+                    throttle_duration_sec=5.0
+                )
     
     def map_callback(self, msg):
         """Store SLAM map
@@ -628,7 +650,6 @@ class AprilTagNavigator(Node):
         msg_stamped = TwistStamped()
         msg_stamped.header.stamp = self.get_clock().now().to_msg()
         msg_stamped.twist = twist
-        self.get_logger().info(f"Twist: {msg_stamped}")
         self.cmd_vel_pub.publish(msg_stamped)
 
 

@@ -62,53 +62,13 @@ def generate_launch_description():
         #     output='screen'
         # ),
 
-        # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
-            package='ros_gz_bridge',
-            executable='parameter_bridge',
-            arguments=[
-                '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-                '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-                '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
-                '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
-                '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.TwistStamped',
-            ],
-            remappings=[
-                ('/camera/image_raw', '/camera/image_raw'),
-                ('/camera/camera_info', '/camera/camera_info'),
-            ],
-            output='screen'
-        ),
-        Node(
-            package='robot_localization',
-            executable='ekf_node',
-            name='ekf_filter_node',
+            package='ros_gz_image',
+            executable='image_bridge',
+            arguments=['camera/image_raw'],
             output='screen',
-            parameters=[{
-                'use_sim_time': True,
-                'frequency': 30.0,
-                'sensor_timeout': 0.1,
-                'two_d_mode': True,
-                'odom_frame': 'odom',
-                'base_link_frame': 'base_footprint',
-                'world_frame': 'odom',
-                'publish_tf': True,
-                'odom0': '/odom',  # Your wheel odometry topic
-                'odom0_config': [True, True, False,
-                                 False, False, True,
-                                 True, True, False,
-                                 False, False, True,
-                                 False, False, False],
-                'imu0': '/imu',  # Your IMU topic
-                'imu0_config': [False, False, False,
-                                True, True, True,
-                                False, False, False,
-                                True, True, True,
-                                True, True, True],
-            }]
+            parameters=[{'use_sim_time': True}]
         ),
-        
         # SLAM Toolbox
         Node(
             package='slam_toolbox',
