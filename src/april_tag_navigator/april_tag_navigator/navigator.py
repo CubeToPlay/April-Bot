@@ -518,6 +518,7 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
+        self.get_logger().info(f"State: {self.state}")
         
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
