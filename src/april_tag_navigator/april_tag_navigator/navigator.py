@@ -222,6 +222,7 @@ class AprilTagNavigator(Node):
                 'y': transform.transform.translation.y,
                 'orientation': transform.transform.rotation
             }
+            self.get_logger().info(f"Pose: {self.robot_pose}")
         except TransformException:
             pass
     
@@ -621,6 +622,7 @@ class AprilTagNavigator(Node):
         msg_stamped = TwistStamped()
         msg_stamped.header.stamp = self.get_clock().now().to_msg()
         msg_stamped.twist = twist
+        self.get_logger().info(f"Twist: {msg_stamped}")
         self.cmd_vel_pub.publish(msg_stamped)
 
 
