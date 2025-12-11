@@ -69,23 +69,6 @@
       <pose>0 0 0 0 0 0</pose>
       <self_collide>false</self_collide>
     </model>
-    <model name="turtlebot3_waffle">
-      <include>
-        <uri>model://turtlebot3_waffle</uri>
-      </include>
-
-      <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
-        <ros>
-          <namespace>/</namespace>
-        </ros>
-        <command_topic>cmd_vel</command_topic>
-        <odometry_topic>odom</odometry_topic>
-        <publish_tf>true</publish_tf>              <!-- REQUIRED -->
-        <publish_odometry_tf>true</publish_odometry_tf>
-        <wheel_separation>0.287</wheel_separation>
-        <wheel_radius>0.033</wheel_radius>
-      </plugin>
-    </model>
     <model name='apriltag_id_0'>
       <link name='link'>
         <visual name='visual'>
