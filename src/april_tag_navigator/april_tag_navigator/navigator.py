@@ -32,6 +32,12 @@ class AprilTagNavigator(Node):
     def __init__(self):
         super().__init__('navigator')
 
+        self.set_parameter(rclpy.parameter.Parameter(
+            'use_sim_time',
+            rclpy.Parameter.Type.BOOL,
+            True
+        ))
+
         # Parameters
         self.declare_parameter('approach_distance', 0.5)
         self.declare_parameter('linear_speed', 0.2)

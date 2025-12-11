@@ -63,16 +63,23 @@ def generate_launch_description():
         # ),
 
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
+        # Node(
+        #     package='ros_gz_bridge',
+        #     executable='parameter_bridge',
+        #     arguments=[
+        #         '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+        #     ],
+        #     remappings=[
+        #         ('/camera/image_raw', '/camera/image_raw'),
+        #     ],
+        #     output='screen'
+        # ),
         Node(
-            package='ros_gz_bridge',
-            executable='parameter_bridge',
-            arguments=[
-                '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-            ],
-            remappings=[
-                ('/camera/image_raw', '/camera/image_raw'),
-            ],
-            output='screen'
+            package='ros_gz_image',
+            executable='image_bridge',
+            arguments=['camera/image_raw'],
+            output='screen',
+            parameters=[{'use_sim_time': True}]
         ),
         # SLAM Toolbox
         Node(
