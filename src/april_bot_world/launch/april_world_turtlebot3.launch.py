@@ -76,7 +76,7 @@ def generate_launch_description():
             executable='parameter_bridge',
             arguments=[
                 '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-                '/cmd_vel@geometry_msgs/msg/TwistStamped@gz.msgs.Twist',
+                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
                 '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
 
             ],
