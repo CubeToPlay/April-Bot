@@ -53,6 +53,7 @@ def generate_launch_description():
             'tag_database_path': LaunchConfiguration('tag_database_path'),
             'frontier_grid_size': LaunchConfiguration('frontier_grid_size'),
             'cancel_command': LaunchConfiguration('cancel_command'),
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
         }],
         emulate_tty=True
     )
