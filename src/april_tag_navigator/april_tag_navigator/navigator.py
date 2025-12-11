@@ -147,6 +147,9 @@ class AprilTagNavigator(Node):
 
         self.exploration_timer = self.create_timer(1.0, self.mark_explored)
         """Timer to mark current grid as explored as the robot is running"""
+
+        self.nav_timer = self.create_timer(0.1, self.navigation_loop)
+        """Timer to run the navigation loop to move the robot"""
         
         # Load database
         self.load_tag_database()
