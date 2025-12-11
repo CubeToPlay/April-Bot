@@ -518,7 +518,6 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
-        self.get_logger().info(f"State: {self.state}")
         
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
@@ -527,6 +526,7 @@ class AprilTagNavigator(Node):
         
         elif self.state == NavigationState.PLANNING:
             if self.robot_pose is None:
+                self.get_logger().info(f"Robot pose is NONE")
                 return
             
             # The tag is known, so the PLANNING state will run A* from the current position to the known tag location
