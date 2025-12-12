@@ -147,22 +147,9 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='base_footprint_to_camera',
             output='screen',
-            arguments=['--x', '0.073', '--y', '-0.011', '--z', '0.1455',
-                    '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1', 
-                    '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
-            parameters=[{'use_sim_time': True}]
-        ),
-
-        # Static transform: camera_rgb_frame -> camera_rgb_optical_frame  
-        # ADD THIS NEW ONE:
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='camera_to_optical',
-            output='screen',
-            arguments=['--x', '0', '--y', '0', '--z', '0',
-                    '--roll', '-1.5708', '--pitch', '0', '--yaw', '-1.5708',
-                    '--frame-id', 'camera_rgb_frame', '--child-frame-id', 'camera_rgb_optical_frame'],
+            arguments=['--x', '0.073', '--y', '-0.011', '--z', '0.084',
+                      '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1', 
+                      '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
             parameters=[{'use_sim_time': True}]
         ),
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)

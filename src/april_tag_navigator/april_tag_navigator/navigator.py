@@ -150,7 +150,7 @@ class AprilTagNavigator(Node):
         """Array of distance measurements from LiDAR"""
 
         # Timers
-        self.map_wait_timer = self.create_timer(0.5, self.wait_for_map_timer)
+        self.map_wait_timer = self.create_timer(1.0, self.wait_for_map_timer)
         """Wait for /map to begin publishing"""
 
         self.pose_timer = None
