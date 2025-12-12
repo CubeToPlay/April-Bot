@@ -1,7 +1,7 @@
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription, ExecuteProcess, TimerAction
+from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription, ExecuteProcess, TimerAction, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
@@ -22,8 +22,40 @@ def generate_launch_description():
     y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
     models_path = os.path.join(pkg_share, 'models')
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
+    def write_fastdds_file(context):
+        xml_content = """<?xml version="1.0" encoding="UTF-8" ?>
+    <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
 
+    <transport_descriptors>
+        <transport_descriptor>
+        <transport_id>udp_only</transport_id>
+        <type>UDPv4</type>
+        </transport_descriptor>
+    </transport_descriptors>
+
+    <participant profile_name="disable_shm" is_default_profile="true">
+        <rtps>
+        <use_builtin_transports>false</use_builtin_transports>
+        <user_transports>
+            <transport_id>udp_only</transport_id>
+        </user_transports>
+        </rtps>
+    </participant>
+
+    </profiles>
+    """
+        path = os.path.expanduser("~/.ros/fastdds.xml")
+        with open(path, 'w') as f:
+            f.write(xml_content)
+        return []
     return LaunchDescription([
+        OpaqueFunction(function=write_fastdds_file),
+
+        SetEnvironmentVariable(
+            name="FASTDDS_DEFAULT_PROFILES_FILE",
+            value=os.path.expanduser("~/.ros/fastdds.xml")
+        ),
+
         SetEnvironmentVariable(
             'GZ_SIM_RESOURCE_PATH',
             PathJoinSubstitution([pkg_path, 'models'])
