@@ -44,7 +44,7 @@
     
     <!-- Left Wheel -->
     <link name="wheel_left_link">
-      <pose>0.0 0.08 0.033 -1.57 0 0</pose>
+      <pose>0.0 0.08 -0.0285 -1.57 0 0</pose>
       <inertial>
         <mass>0.1</mass>
         <inertia>
@@ -93,7 +93,7 @@
     
     <!-- Right Wheel -->
     <link name="wheel_right_link">
-      <pose>0.0 -0.08 0.033 -1.57 0 0</pose>
+      <pose>0.0 -0.08 -0.0285 -1.57 0 0</pose>
       <inertial>
         <mass>0.1</mass>
         <inertia>
@@ -142,7 +142,7 @@
     
     <!-- Caster Wheel -->
     <link name="caster_back_link">
-      <pose>-0.081 0 0.004 0 0 0</pose>
+        <pose>-0.081 0 -0.0285 0 0 0</pose>
       <inertial>
         <mass>0.01</mass>
         <inertia>
