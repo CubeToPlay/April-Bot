@@ -1,72 +1,63 @@
-<?xml version="1.0"?>
+<?xml version="1.0" ?>
 <sdf version="1.9">
-  <model name="turtlebot3_waffle_fixed">
-    <!-- place the model's reference frame so ground is z = 0 -->
-    <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
-
-    <!-- Base footprint (reference frame on ground) -->
+  <model name="turtlebot3_waffle">
+    <pose>0 0 0.01 0 0 0</pose>
+    
+    <!-- Base Link -->
     <link name="base_footprint"/>
-
-    <!-- Base link: center of the base box is at z = half_height (so bottom touches ground) -->
+    
     <link name="base_link">
-      <!-- base box height ~= 0.090 -> half = 0.045 -->
-      <pose>-0.064 0 0.048 0 0 0</pose>
-
+      <pose>0 0 0.0715 0 0 0</pose>
       <inertial>
         <mass>1.0</mass>
         <inertia>
-          <ixx>4.2111447e-02</ixx>
-          <ixy>0</ixy>
-          <ixz>0</ixz>
-          <iyy>4.2111447e-02</iyy>
-          <iyz>0</iyz>
-          <izz>7.5254874e-02</izz>
+          <ixx>0.001</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.001</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.001</izz>
         </inertia>
-        <mass>1.3729096e+00</mass>
       </inertial>
-
-      <!-- realistic base collision & visual box (bottom sits at z=0) -->
+      
       <collision name="base_collision">
-        <pose>-0.064 0 0.048 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.265 0.265 0.089</size>
+            <size>0.140 0.140 0.143</size>
           </box>
         </geometry>
       </collision>
-
+      
       <visual name="base_visual">
-        <pose>-0.064 0 0 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.140 0.140 0.090</size>
+            <size>0.140 0.140 0.143</size>
           </box>
         </geometry>
         <material>
-          <ambient>1 0 0 1</ambient>
-          <diffuse>1 0 0 1</diffuse>
-          <specular>0.1 0.1 0.1 1</specular>
+            <ambient>1 0 0 1</ambient>  <!-- Bright red -->
+            <diffuse>1 0 0 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
-
+    
     <!-- Left Wheel -->
     <link name="wheel_left_link">
+      <pose>0.0 0.08 -0.0285 -1.57 0 0</pose>
       <inertial>
-        <pose>0.0 0.144 0.023 -1.57 0 0</pose>
-        <inertia>
-          <ixx>1.1175580e-05</ixx>
-          <ixy>-4.2369783e-11</ixy>
-          <ixz>-5.9381719e-09</ixz>
-          <iyy>1.1192413e-05</iyy>
-          <iyz>-1.4400107e-11</iyz>
-          <izz>2.0712558e-05</izz>
-        </inertia>
         <mass>0.1</mass>
+        <inertia>
+          <ixx>0.001</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.001</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.001</izz>
+        </inertia>
       </inertial>
-
+      
       <collision name="wheel_left_collision">
-        <pose>0.0 0.144 0.023 -1.57 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.033</radius>
@@ -74,31 +65,18 @@
           </cylinder>
         </geometry>
         <surface>
-          <!-- This friction pamareter don't contain reliable data!! -->
           <friction>
             <ode>
-              <mu>100000.0</mu>
-              <mu2>100000.0</mu2>
-              <fdir1>0 0 0</fdir1>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
               <slip1>0.0</slip1>
               <slip2>0.0</slip2>
             </ode>
           </friction>
-          <contact>
-            <ode>
-              <soft_cfm>0</soft_cfm>
-              <soft_erp>0.2</soft_erp>
-              <kp>1e+5</kp>
-              <kd>1</kd>
-              <max_vel>0.01</max_vel>
-              <min_depth>0.001</min_depth>
-            </ode>
-          </contact>
         </surface>
       </collision>
-
+      
       <visual name="wheel_left_visual">
-        <pose>0.0 0.144 0.023 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.033</radius>
@@ -106,29 +84,29 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0 0 1 1</ambient>
-          <diffuse>0 0 1 1</diffuse>
+            <ambient>0 0 1 1</ambient>  <!-- Bright blue -->
+            <diffuse>0 0 1 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
-
+    
     <!-- Right Wheel -->
     <link name="wheel_right_link">
+      <pose>0.0 -0.08 -0.0285 -1.57 0 0</pose>
       <inertial>
-        <pose>0.0 -0.144 0.023 -1.57 0 0</pose>
-        <inertia>
-          <ixx>1.1175580e-05</ixx>
-          <ixy>-4.2369783e-11</ixy>
-          <ixz>-5.9381719e-09</ixz>
-          <iyy>1.1192413e-05</iyy>
-          <iyz>-1.4400107e-11</iyz>
-          <izz>2.0712558e-05</izz>
-        </inertia>
         <mass>0.1</mass>
+        <inertia>
+          <ixx>0.001</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.001</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.001</izz>
+        </inertia>
       </inertial>
-
+      
       <collision name="wheel_right_collision">
-        <pose>0.0 -0.144 0.023 -1.57 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.033</radius>
@@ -136,31 +114,18 @@
           </cylinder>
         </geometry>
         <surface>
-          <!-- This friction pamareter don't contain reliable data!! -->
           <friction>
             <ode>
-              <mu>100000.0</mu>
-              <mu2>100000.0</mu2>
-              <fdir1>0 0 0</fdir1>
+              <mu>100.0</mu>
+              <mu2>100.0</mu2>
               <slip1>0.0</slip1>
               <slip2>0.0</slip2>
             </ode>
           </friction>
-          <contact>
-            <ode>
-              <soft_cfm>0</soft_cfm>
-              <soft_erp>0.2</soft_erp>
-              <kp>1e+5</kp>
-              <kd>1</kd>
-              <max_vel>0.01</max_vel>
-              <min_depth>0.001</min_depth>
-            </ode>
-          </contact>
         </surface>
       </collision>
-
+      
       <visual name="wheel_right_visual">
-        <pose>0.0 -0.144 0.023 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.033</radius>
@@ -168,112 +133,63 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0 0 1 1</ambient>
-          <diffuse>0 0 1 1</diffuse>
+            <ambient>0 0 1 1</ambient>  <!-- Bright blue -->
+            <diffuse>0 0 1 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
-
-    <!-- Caster (rear) ball: radius ~ 0.012 m, center sits at z = radius above ground -->
-    <link name="caster_back_right_link">
-      <pose>-0.177 -0.064 -0.004 -1.57 0 0</pose>
+    
+    <!-- Caster Wheel -->
+    <link name="caster_back_link">
+      <pose>-0.081 0 -0.0565 0 0 0</pose>
       <inertial>
-        <mass>0.001</mass>
+        <mass>0.01</mass>
         <inertia>
           <ixx>0.00001</ixx>
-          <ixy>0.000</ixy>
-          <ixz>0.000</ixz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
           <iyy>0.00001</iyy>
-          <iyz>0.000</iyz>
+          <iyz>0.0</iyz>
           <izz>0.00001</izz>
         </inertia>
       </inertial>
-
+      
       <collision name="caster_collision">
         <geometry>
           <sphere>
-            <radius>0.005000</radius>
+            <radius>0.005</radius>
           </sphere>
         </geometry>
         <surface>
-          <contact>
+          <friction>
             <ode>
-              <soft_cfm>0</soft_cfm>
-              <soft_erp>0.2</soft_erp>
-              <kp>1e+5</kp>
-              <kd>1</kd>
-              <max_vel>0.01</max_vel>
-              <min_depth>0.001</min_depth>
+              <mu>0.0</mu>
+              <mu2>0.0</mu2>
+              <slip1>1.0</slip1>
+              <slip2>1.0</slip2>
             </ode>
-          </contact>
-        </surface>
-      </collision>
-
-      <visual name="caster_visual">
-        <geometry>
-          <sphere>
-            <radius>0.012</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <ambient>0.1 0.1 0.1 1</ambient>
-          <diffuse>0.1 0.1 0.1 1</diffuse>
-        </material>
-      </visual>
-    </link>
-
-     <link name='caster_back_left_link'>
-      <pose>-0.177 0.064 -0.004 -1.57 0 0</pose>
-      <inertial>
-        <mass>0.001</mass>
-        <inertia>
-          <ixx>0.00001</ixx>
-          <ixy>0.000</ixy>
-          <ixz>0.000</ixz>
-          <iyy>0.00001</iyy>
-          <iyz>0.000</iyz>
-          <izz>0.00001</izz>
-        </inertia>
-      </inertial>
-      <collision name='caster_collision'>
-        <geometry>
-          <sphere>
-            <radius>0.005000</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <contact>
-            <ode>
-              <soft_cfm>0</soft_cfm>
-              <soft_erp>0.2</soft_erp>
-              <kp>1e+5</kp>
-              <kd>1</kd>
-              <max_vel>0.01</max_vel>
-              <min_depth>0.001</min_depth>
-            </ode>
-          </contact>
+          </friction>
         </surface>
       </collision>
     </link>
-
-    <!-- LiDAR link -->
+    
+    <!-- LiDAR Link -->
     <link name="base_scan">
-      <!-- place lidar near top of base; base_link center is 0.045; lidar center ~0.045 + 0.18 = 0.225 -->
+      <pose>-0.032 0 0.2335 0 0 0</pose>
       <inertial>
-        <pose>-0.052 0 0.111 0 0 0</pose>
+        <mass>0.125</mass>
         <inertia>
           <ixx>0.001</ixx>
-          <ixy>0.000</ixy>
-          <ixz>0.000</ixz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
           <iyy>0.001</iyy>
-          <iyz>0.000</iyz>
+          <iyz>0.0</iyz>
           <izz>0.001</izz>
         </inertia>
-        <mass>0.114</mass>
       </inertial>
-
+      
       <collision name="lidar_collision">
-      <pose>-0.052 0 0.111 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.0508</radius>
@@ -281,9 +197,8 @@
           </cylinder>
         </geometry>
       </collision>
-
+      
       <visual name="lidar_visual">
-        <pose>-0.064 0 0.121 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.0508</radius>
@@ -291,147 +206,129 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0 1 0 1</ambient>
-          <diffuse>0 1 0 1</diffuse>
+            <ambient>0 1 0 1</ambient>  <!-- Bright green -->
+            <diffuse>0 1 0 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
-
+      
+      <!-- LiDAR Sensor with proper timestamp -->
       <sensor name="lidar" type="gpu_lidar">
-         <always_on>true</always_on>
-        <visualize>true</visualize>
-        <pose>-0.064 0 0.121 0 0 0</pose>
+        <topic>/scan</topic>
         <update_rate>10</update_rate>
-        <topic>scan</topic>
         <gz_frame_id>base_scan</gz_frame_id>
+        <always_on>true</always_on>
+        <visualize>false</visualize>
         <lidar>
           <scan>
             <horizontal>
               <samples>360</samples>
-              <resolution>1.000000</resolution>
-              <min_angle>0.000000</min_angle>
-              <max_angle>6.280000</max_angle>
+              <resolution>1.0</resolution>
+              <min_angle>0.0</min_angle>
+              <max_angle>6.28</max_angle>
             </horizontal>
           </scan>
           <range>
-            <min>0.120000</min>
+            <min>0.12</min>
             <max>3.5</max>
-            <resolution>0.015000</resolution>
+            <resolution>0.015</resolution>
           </range>
           <noise>
-             <type>gaussian</type>
+            <type>gaussian</type>
             <mean>0.0</mean>
             <stddev>0.01</stddev>
           </noise>
         </lidar>
       </sensor>
     </link>
-
-    <!-- Camera -->
+    
+    <!-- Camera Link -->
     <link name="camera_rgb_frame">
-      <!-- put camera near front/top of base -->
+      <pose>0.073 -0.011 0.1455 0 0 0</pose>
       <inertial>
-        <pose>0.069 -0.047 0.107 0 0 0</pose>
+        <mass>0.035</mass>
         <inertia>
           <ixx>0.001</ixx>
-          <ixy>0.000</ixy>
-          <ixz>0.000</ixz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
           <iyy>0.001</iyy>
-          <iyz>0.000</iyz>
+          <iyz>0.0</iyz>
           <izz>0.001</izz>
         </inertia>
-        <mass>0.035</mass>
       </inertial>
-
-      <pose>0.069 -0.047 0.107 0 0 0</pose>
+      
+      <!-- Camera Sensor with proper timestamp -->
       <sensor name="camera" type="camera">
-        <always_on>true</always_on>
-        <visualize>true</visualize>
-        <update_rate>30</update_rate>
-        <topic>camera/image_raw</topic>
+        <topic>/camera/image_raw</topic>
         <gz_frame_id>camera_rgb_frame</gz_frame_id>
-        <camera name="intel_realsense_r200">
-          <camera_info_topic>camera/camera_info</camera_info_topic>
-          <horizontal_fov>1.02974</horizontal_fov>
+        <camera>
+          <horizontal_fov>1.085595</horizontal_fov>
           <image>
-            <width>1920</width>
-            <height>1080</height>
+            <width>640</width>
+            <height>480</height>
             <format>R8G8B8</format>
           </image>
           <clip>
-            <near>0.02</near>
-            <far>300</far>
+            <near>0.05</near>
+            <far>8.0</far>
           </clip>
           <noise>
             <type>gaussian</type>
-            <!-- Noise is sampled independently per pixel on each frame.
-                  That pixel's noise value is added to each of its color
-                  channels, which at that point lie in the range [0,1]. -->
             <mean>0.0</mean>
             <stddev>0.007</stddev>
           </noise>
         </camera>
+        <always_on>true</always_on>
+        <update_rate>30</update_rate>
+        <visualize>false</visualize>
       </sensor>
     </link>
-
+    
     <!-- Joints -->
     <joint name="base_joint" type="fixed">
       <parent>base_footprint</parent>
       <child>base_link</child>
-      <pose>0.0 0.0 0.010 0 0 0</pose>
     </joint>
-
+    
     <joint name="wheel_left_joint" type="revolute">
       <parent>base_link</parent>
       <child>wheel_left_link</child>
-      <pose>0.0 0.144 0.023 -1.57 0 0</pose>
       <axis>
         <xyz>0 0 1</xyz>
         <limit>
-          <effort>20</effort>
+          <lower>-1.79769e+308</lower>
+          <upper>1.79769e+308</upper>
         </limit>
       </axis>
     </joint>
-
+    
     <joint name="wheel_right_joint" type="revolute">
       <parent>base_link</parent>
       <child>wheel_right_link</child>
-      <pose>0.0 -0.144 0.023 -1.57 0 0</pose>
       <axis>
         <xyz>0 0 1</xyz>
         <limit>
-          <effort>20</effort>
+          <lower>-1.79769e+308</lower>
+          <upper>1.79769e+308</upper>
         </limit>
       </axis>
     </joint>
-
-    <joint name='caster_back_right_joint' type='ball'>
+    
+    <joint name="caster_back_joint" type="ball">
       <parent>base_link</parent>
-      <child>caster_back_right_link</child>
+      <child>caster_back_link</child>
     </joint>
-
-    <joint name='caster_back_left_joint' type='ball'>
-      <parent>base_link</parent>
-      <child>caster_back_left_link</child>
-    </joint>
-
+    
     <joint name="lidar_joint" type="fixed">
       <parent>base_link</parent>
       <child>base_scan</child>
-      <pose>-0.064 0 0.121 0 0 0</pose>
-      <axis>
-        <xyz>0 0 1</xyz>
-      </axis>
     </joint>
-
+    
     <joint name="camera_joint" type="fixed">
       <parent>base_link</parent>
       <child>camera_rgb_frame</child>
-      <pose>0.064 -0.065 0.094 0 0 0</pose>
-      <axis>
-        <xyz>0 0 1</xyz>
-      </axis>
     </joint>
-
+    
     <!-- Diff Drive Plugin -->
     <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
       <left_joint>wheel_left_joint</left_joint>
@@ -444,12 +341,12 @@
       <frame_id>odom</frame_id>
       <child_frame_id>base_footprint</child_frame_id>
     </plugin>
-
+    
     <!-- Joint State Publisher -->
     <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
       <topic>/joint_states</topic>
     </plugin>
-
+    
     <!-- Pose Publisher -->
     <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
       <publish_link_pose>true</publish_link_pose>
@@ -459,6 +356,6 @@
       <publish_nested_model_pose>true</publish_nested_model_pose>
       <update_frequency>50</update_frequency>
     </plugin>
-
+    
   </model>
 </sdf>
