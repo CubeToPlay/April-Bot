@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.9">
   <model name="turtlebot3_waffle">
-    <pose>0 0 0.01 0 0 0</pose>
+    <pose>0 0 0.1045 0 0 0</pose>
     
     <!-- Base Link -->
     <link name="base_footprint"/>
@@ -44,7 +44,7 @@
     
     <!-- Left Wheel -->
     <link name="wheel_left_link">
-      <pose>0.03 0.08 0.0285 -1.57 0 0</pose>
+      <pose>0.03 0.08 0.033 -1.57 0 0</pose>
       <inertial>
         <mass>0.1</mass>
         <inertia>
@@ -83,7 +83,7 @@
     
     <!-- Right Wheel -->
     <link name="wheel_right_link">
-      <pose>0.03 -0.08 0.0285 -1.57 0 0</pose>
+      <pose>0.03 -0.08 0.033 -1.57 0 0</pose>
       <inertial>
         <mass>0.1</mass>
         <inertia>
@@ -122,7 +122,7 @@
     
     <!-- Caster Wheel -->
     <link name="caster_back_link">
-      <pose>-0.060 0 0.0 0 0 0</pose>
+      <pose>-0.060 0 0.005 0 0 0</pose>
       <inertial>
         <mass>0.01</mass>
         <inertia>
@@ -277,7 +277,7 @@
       <parent>base_link</parent>
       <child>wheel_left_link</child>
       <axis>
-        <xyz>0 0 1</xyz>
+        <xyz>0 1 0</xyz>
         <limit>
           <lower>-1.79769e+308</lower>
           <upper>1.79769e+308</upper>
@@ -289,7 +289,7 @@
       <parent>base_link</parent>
       <child>wheel_right_link</child>
       <axis>
-        <xyz>0 0 1</xyz>
+        <xyz>0 1 0</xyz>
         <limit>
           <lower>-1.79769e+308</lower>
           <upper>1.79769e+308</upper>
