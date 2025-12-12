@@ -67,8 +67,8 @@
         <surface>
           <friction>
             <ode>
-              <mu>100.0</mu>
-              <mu2>100.0</mu2>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
               <slip1>0.0</slip1>
               <slip2>0.0</slip2>
             </ode>
@@ -294,7 +294,7 @@
       <parent>base_link</parent>
       <child>wheel_left_link</child>
       <axis>
-        <xyz>0 0 1</xyz>
+        <xyz>0 1 0</xyz>
         <limit>
           <lower>-1.79769e+308</lower>
           <upper>1.79769e+308</upper>
@@ -306,7 +306,7 @@
       <parent>base_link</parent>
       <child>wheel_right_link</child>
       <axis>
-        <xyz>0 0 1</xyz>
+        <xyz>0 1 0</xyz>
         <limit>
           <lower>-1.79769e+308</lower>
           <upper>1.79769e+308</upper>
