@@ -34,10 +34,10 @@ def generate_launch_description():
             PathJoinSubstitution([pkg_path, 'models'])
         ),
         
-        SetEnvironmentVariable(
-            'TURTLEBOT3_MODEL',
-            'waffle'
-        ),
+        # SetEnvironmentVariable(
+        #     'TURTLEBOT3_MODEL',
+        #     'waffle'
+        # ),
         # Launch Gazebo with your world
         ExecuteProcess(
             cmd=['gz', 'sim', world_path, '-r'],
@@ -84,9 +84,9 @@ def generate_launch_description():
         # ),
         #  Node(
         #     package='ros_gz_sim',
-        #     executable='create',
+        #     executable='spawn_entity.py',
         #     arguments=[
-        #         '-topic', '/robot_description',
+        #         '-topic', 'robot_description',
         #         '-entity', 'waffle',
         #         '-x', x_pose,
         #         '-y', y_pose,
@@ -160,14 +160,13 @@ def generate_launch_description():
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
                 '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-                '/model/waffle/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
                 '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
                 '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
                 '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
             ],
             remappings=[
                 ('/camera/image_raw', '/camera/image_raw'),
-                ('/model/waffle/cmd_vel', '/cmd_vel'),
             ],
             parameters=[{
                 'use_sim_time': True,
