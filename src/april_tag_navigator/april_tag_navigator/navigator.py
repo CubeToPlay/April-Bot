@@ -354,9 +354,14 @@ class AprilTagNavigator(Node):
         50-100: Occupied (obstacle)
         -1: Not explored yet (unknown)
         """
-        if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
-            return False
-        return self.map_data[my, mx] < 50  # Free if occupancy < 50
+        for dx in range(-radius, radius+1):
+            for dy in range(-radius, radius+1):
+                cx, cy = mx + dx, my + dy
+                if not (0 <= cx < self.map_width and 0 <= cy < self.map_height):
+                    return False
+                if self.map_data[cy, cx] >= 50:   # obstacle
+                    return False
+        return True
 
     def astar_planning(self, start_x, start_y, goal_x, goal_y):
         """A* path planning algorithm"""
