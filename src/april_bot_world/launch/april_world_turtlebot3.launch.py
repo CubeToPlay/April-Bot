@@ -44,17 +44,17 @@ def generate_launch_description():
             }.items(),
         ),
 
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
-        # ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
+        ),
 
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
-        #     launch_arguments={
-        #         'x_pose': x_pose,
-        #         'y_pose': y_pose
-        #     }.items(),
-        # ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
+            launch_arguments={
+                'x_pose': x_pose,
+                'y_pose': y_pose
+            }.items(),
+        ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -90,19 +90,5 @@ def generate_launch_description():
             ],
             parameters=[{'use_sim_time': True}],
             output='screen'
-        ),
-        Node(
-            package='ros_gz_sim',
-            executable='create',
-            arguments=[
-                '-world', 'apriltag_world',
-                '-name', 'turtlebot3_waffle',
-                '-file', '/opt/ros/kilted/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf',
-                '-x', '-2.0',
-                '-y', '-0.5',
-                '-z', '0.01',
-            ],
-            output='screen',
-            parameters=[{'use_sim_time': True}]
         ),
     ])
