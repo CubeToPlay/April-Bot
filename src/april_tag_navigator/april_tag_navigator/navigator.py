@@ -69,10 +69,6 @@ class AprilTagNavigator(Node):
         self.tf_ready = False
         """Used to avoid map errors"""
 
-        self.startup_spin_complete = False
-        self.startup_spin_duration = 0.0
-        self.spin_start_time = None
-
         # Subscribers
         self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
         """Subscribes to LiDAR data. """
@@ -154,8 +150,8 @@ class AprilTagNavigator(Node):
         """Array of distance measurements from LiDAR"""
 
         # Timers
-        self.startup_timer = self.create_timer(1.0, self.wait_for_startup)
-        """Timer to wait for everything to startup correctly"""
+        self.map_wait_timer = self.create_timer(0.5, self.wait_for_map_timer)
+        """Wait for /map to begin publishing"""
 
         self.pose_timer = None
         """Timer to update the robot pose every 0.2 secconds"""
@@ -169,32 +165,66 @@ class AprilTagNavigator(Node):
         # Load database
         self.load_tag_database()
     
-    def wait_for_startup(self):
-        """Wait for simulation and TF to be ready"""
+    def map_ready(self):
+        if self.map_data is None:
+            return False
         try:
-            self.tf_buffer.lookup_transform(
-                'odom', 'base_footprint',
+            return self.tf_buffer.can_transform(
+                'map',
+                'base_footprint',
                 rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
+                timeout=rclpy.duration.Duration(seconds=0.2)
             )
-            
-            self.get_logger().info('TF is ready! Starting navigation timers...')
-            self.tf_ready = True
+        except Exception:
+            return False
+    def wait_for_map_timer(self):
+        if not self.map_ready():
+            self.get_logger().info('Waiting for map...')
+            return
 
-            self.spin_start_time = self.get_clock().now()
-            
-            # Now start the real timers
-            self.pose_timer = self.create_timer(0.2, self.update_robot_pose)
-            self.exploration_timer = self.create_timer(1.0, self.mark_explored)
-            self.nav_timer = self.create_timer(0.1, self.navigation_loop)
-            
-            # Cancel this startup timer
-            self.startup_timer.cancel()
-        except TransformException:
-            self.get_logger().info(
-                'Waiting for odom->base_footprint transform...',
-                throttle_duration_sec=2.0
-            )
+        self.get_logger().info('Map ready. Starting navigation.')
+        self.map_wait_timer.cancel()
+        self.start_navigation()
+    
+    def start_navigation(self):
+        """
+        Called once when the map and TF are confirmed ready.
+        Starts all navigation-related timers safely.
+        """
+
+        if hasattr(self, 'navigation_started') and self.navigation_started:
+            return
+
+        self.navigation_started = True
+
+        self.get_logger().info('Starting navigation stack')
+        
+        self.spin_start_time = self.get_clock().now()
+
+        # Initialize pose tracking
+        self.pose_timer = self.create_timer(
+            0.2,
+            self.update_robot_pose
+        )
+
+        # Mark explored space
+        self.exploration_timer = self.create_timer(
+            1.0,
+            self.mark_explored
+        )
+
+        # Main navigation loop
+        self.nav_timer = self.create_timer(
+            0.1,
+            self.navigation_loop
+        )
+
+        # Ensure robot starts stopped
+        twist = Twist()
+        self.cmd_vel_pub.publish(twist)
+
+        # Initialize state machine
+        self.state = NavigationState.IDLE
 
     def goal_callback(self, msg):
         """Receive target tag ID"""
@@ -595,40 +625,6 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
-
-        if not self.startup_spin_complete:
-            if self.spin_start_time is None:
-                self.spin_start_time = self.get_clock().now()
-            # Calculate elapsed time
-            current_time = self.get_clock().now()
-            elapsed = (current_time - self.spin_start_time).nanoseconds / 1e9
-            
-            # Spin for enough time to complete 360°
-            # angular_speed = 0.5 rad/s, 360° = 2π rad
-            # time = 2π / 0.5 ≈ 12.6 seconds
-            spin_time_needed = (2 * 3.14159) / self.angular_speed
-
-            if elapsed < spin_time_needed:
-                twist.angular.z = self.angular_speed
-                twist.linear.x = 0.0
-                self.get_logger().info(
-                    f'Initializing SLAM: spinning {elapsed:.1f}/{spin_time_needed:.1f}s',
-                    throttle_duration_sec=1.0
-                )
-                self.cmd_vel_pub.publish(twist)
-                return
-            else:
-                # Spin complete - stop and mark as done
-                self.startup_spin_complete = True
-                twist.angular.z = 0.0
-                twist.linear.x = 0.0
-                self.cmd_vel_pub.publish(twist)
-                self.get_logger().info('Startup spin complete! SLAM should be initialized.')
-                
-                # Give it a moment to settle
-                import time
-                time.sleep(0.5)
-                return
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
