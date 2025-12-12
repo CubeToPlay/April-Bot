@@ -69,6 +69,10 @@ class AprilTagNavigator(Node):
         self.tf_ready = False
         """Used to avoid map errors"""
 
+        self.startup_spin_complete = False
+        self.startup_spin_duration = 0.0
+        self.spin_start_time = None
+
         # Subscribers
         self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
         """Subscribes to LiDAR data. """
@@ -176,6 +180,8 @@ class AprilTagNavigator(Node):
             
             self.get_logger().info('TF is ready! Starting navigation timers...')
             self.tf_ready = True
+
+            self.spin_start_time = self.get_clock().now()
             
             # Now start the real timers
             self.pose_timer = self.create_timer(0.2, self.update_robot_pose)
@@ -584,7 +590,41 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
-        
+
+        if not self.startup_spin_complete:
+            if self.spin_start_time is None:
+                self.spin_start_time = self.get_clock().now()
+            # Calculate elapsed time
+            current_time = self.get_clock().now()
+            elapsed = (current_time - self.spin_start_time).nanoseconds / 1e9
+            
+            # Spin for enough time to complete 360°
+            # angular_speed = 0.5 rad/s, 360° = 2π rad
+            # time = 2π / 0.5 ≈ 12.6 seconds
+            spin_time_needed = (2 * 3.14159) / self.angular_speed
+
+            if elapsed < spin_time_needed:
+                twist.angular.z = self.angular_speed
+                twist.linear.x = 0.0
+                self.get_logger().info(
+                    f'Initializing SLAM: spinning {elapsed:.1f}/{spin_time_needed:.1f}s',
+                    throttle_duration_sec=1.0
+                )
+                self.cmd_vel_pub.publish(twist)
+                return
+            else:
+                # Spin complete - stop and mark as done
+                self.startup_spin_complete = True
+                twist.angular.z = 0.0
+                twist.linear.x = 0.0
+                self.cmd_vel_pub.publish(twist)
+                self.get_logger().info('Startup spin complete! SLAM should be initialized.')
+                
+                # Give it a moment to settle
+                import time
+                time.sleep(0.5)
+                return
+
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
             twist.linear.x = 0.0
