@@ -281,7 +281,7 @@
       </visual>
       
       <!-- LiDAR Sensor with proper timestamp -->
-      <sensor name="lidar" type="lidar">
+      <sensor name="lidar" type="gpu_lidar">
         <always_on>true</always_on>
         <update_rate>10</update_rate>
         <topic>/scan</topic>
