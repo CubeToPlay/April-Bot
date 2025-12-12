@@ -69,14 +69,17 @@ def generate_launch_description():
             package='ros_gz_bridge',
             executable='parameter_bridge',
             arguments=[
-                '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-                '/cmd_vel@geometry_msgs/msg/TwistStamped@gz.msgs.TwistStamped',
-                '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
+                '/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
+                '/cmd_vel@geometry_msgs/msg/TwistStamped]gz.msgs.TwistStamped',
+                '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+                '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
 
             ],
             remappings=[
                 ('/camera/image_raw', '/camera/image_raw'),
             ],
+            parameters=[{'use_sim_time': True}],
             output='screen'
         ),
     ])
