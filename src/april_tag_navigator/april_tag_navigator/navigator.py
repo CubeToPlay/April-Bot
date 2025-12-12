@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist, PoseStamped, TwistStamped
+from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import OccupancyGrid, Path
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
@@ -93,7 +93,7 @@ class AprilTagNavigator(Node):
         """
 
         # Publishers
-        self.cmd_vel_pub = self.create_publisher(TwistStamped, '/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         """Publishes velocity commands to robot."""
         self.path_pub = self.create_publisher(Path, '/planned_path', 10)
         """Publishes A* path for visualization in RViz. Used for debugging path."""
@@ -691,10 +691,7 @@ class AprilTagNavigator(Node):
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
         
         # Publish the velocity of the robot
-        msg_stamped = TwistStamped()
-        msg_stamped.header.stamp = self.get_clock().now().to_msg()
-        msg_stamped.twist = twist
-        self.cmd_vel_pub.publish(msg_stamped)
+        self.cmd_vel_pub.publish(twist)
 
 
 def main(args=None):
@@ -707,10 +704,7 @@ def main(args=None):
     finally:
         navigator.save_tag_database()
         twist = Twist()
-        msg_stamped = TwistStamped()
-        msg_stamped.header.stamp = navigator.get_clock().now().to_msg()
-        msg_stamped.twist = twist
-        navigator.cmd_vel_pub.publish(msg_stamped)
+        navigator.cmd_vel_pub.publish(twist)
         navigator.destroy_node()
         rclpy.shutdown()
 
