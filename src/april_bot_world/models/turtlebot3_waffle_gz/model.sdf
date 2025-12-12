@@ -142,7 +142,7 @@
     
     <!-- Caster Wheel -->
     <link name="caster_back_link">
-      <pose>-0.081 0 0.0565 0 0 0</pose>
+      <pose>-0.081 0 -0.0565 0 0 0</pose>
       <inertial>
         <mass>0.01</mass>
         <inertia>
@@ -189,7 +189,7 @@
     
     <!-- LiDAR Link -->
     <link name="base_scan">
-      <pose>-0.032 0 0.2335 0 0 0</pose>
+      <pose>-0.032 0 0.1335 0 0 0</pose>
       <inertial>
         <mass>0.125</mass>
         <inertia>
