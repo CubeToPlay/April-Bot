@@ -22,44 +22,7 @@ def generate_launch_description():
     y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
     models_path = os.path.join(pkg_share, 'models')
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
-    def write_fastdds_file(context):
-        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-<dds>
-  <profiles>
-
-    <!-- Define a UDP-only transport -->
-    <transport_descriptors>
-      <transport_descriptor>
-        <transport_id>udp_only</transport_id>
-        <type>UDPv4</type>
-      </transport_descriptor>
-    </transport_descriptors>
-
-    <!-- Participant using ONLY UDP, SHM disabled -->
-    <participant profile_name="udp_profile" is_default_profile="true">
-      <rtps>
-        <use_SHM>false</use_SHM>   <!-- Correct way to disable SHM -->
-        <user_transports>
-          <transport_id>udp_only</transport_id>
-        </user_transports>
-      </rtps>
-    </participant>
-
-  </profiles>
-</dds>
-
-    """
-        path = os.path.expanduser("~/.ros/fastdds.xml")
-        with open(path, 'w') as f:
-            f.write(xml_content)
-        return []
     return LaunchDescription([
-        OpaqueFunction(function=write_fastdds_file),
-
-        SetEnvironmentVariable(
-            name="FASTDDS_DEFAULT_PROFILES_FILE",
-            value=os.path.expanduser("~/.ros/fastdds.xml")
-        ),
 
         SetEnvironmentVariable(
             'GZ_SIM_RESOURCE_PATH',
