@@ -128,6 +128,102 @@ class AprilTagDetector(Node):
             self.camera_frame = msg.header.frame_id
             self.get_logger().info(f'Camera calibration received. Frame: {self.camera_frame}')
 
+    def has_inner_pattern(self, gray_img, corners):
+        """Check if the quadrilateral contains an actual AprilTag pattern (black/white tiles)"""
+        size = 300
+        dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype="float32")
+        M = cv2.getPerspectiveTransform(corners, dst)
+        warped = cv2.warpPerspective(gray_img, M, (size, size))
+        
+        # Threshold to binary
+        _, warped_bin = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        
+        # Check border (AprilTags have a white border)
+        border_width = int(size / 10)
+        
+        # Sample border regions
+        top_border = warped_bin[0:border_width, :]
+        bottom_border = warped_bin[-border_width:, :]
+        left_border = warped_bin[:, 0:border_width]
+        right_border = warped_bin[:, -border_width:]
+        
+        # Border should be predominantly white (>70% white pixels)
+        border_pixels = np.concatenate([
+            top_border.flatten(),
+            bottom_border.flatten(),
+            left_border.flatten(),
+            right_border.flatten()
+        ])
+        white_ratio = np.sum(border_pixels == 255) / len(border_pixels)
+        
+        if white_ratio < 0.70:
+            return False
+        
+        # Check inner region has pattern variation (not uniform)
+        inner = warped_bin[border_width:-border_width, border_width:-border_width]
+        
+        # Calculate variance - tags should have high variance (black AND white tiles)
+        black_pixels = np.sum(inner == 0)
+        white_pixels = np.sum(inner == 255)
+        total_pixels = inner.size
+        
+        black_ratio = black_pixels / total_pixels
+        white_ratio = white_pixels / total_pixels
+        
+        # Tag should have both black and white regions (not uniform)
+        # Typical AprilTag has 20-50% black pixels in inner region
+        if black_ratio < 0.15 or black_ratio > 0.60:
+            return False
+        
+        # Check for tile-like structure (not just noise)
+        # Divide inner region into grid and check for consistency
+        grid_size = 6  # AprilTag 36h11 has 6x6 inner grid
+        tile_height = inner.shape[0] // grid_size
+        tile_width = inner.shape[1] // grid_size
+        
+        consistent_tiles = 0
+        for i in range(grid_size):
+            for j in range(grid_size):
+                tile = inner[i*tile_height:(i+1)*tile_height, 
+                            j*tile_width:(j+1)*tile_width]
+                
+                # Each tile should be predominantly one color (>80%)
+                tile_white = np.sum(tile == 255) / tile.size
+                if tile_white > 0.80 or tile_white < 0.20:
+                    consistent_tiles += 1
+        
+        # At least 70% of tiles should be consistent
+        if consistent_tiles < (grid_size * grid_size * 0.70):
+            return False
+        
+        return True
+
+    def check_tag_completeness(self, corners, img_shape):
+        """Check if all 4 corners are well within the image bounds"""
+        margin = 20  # pixels from edge
+        height, width = img_shape[:2]
+        
+        for corner in corners:
+            x, y = corner
+            # Check if corner is too close to image edge
+            if (x < margin or x > width - margin or 
+                y < margin or y > height - margin):
+                return False
+        
+        return True
+
+    def validate_tag_quality(self, gray_img, corners):
+        """Combined validation for tag quality"""
+        # Check if tag is complete (not cut off by image edge)
+        if not self.check_tag_completeness(corners, gray_img.shape):
+            return False
+        
+        # Check if it has actual AprilTag pattern
+        if not self.has_inner_pattern(gray_img, corners):
+            return False
+        
+        return True
+    
     def detect_apriltags(self, img):
         """Detects all AprilTags in the given image, using two methods in order to detect corners of AprilTags"""
         # Convert the given image to grayscale
@@ -195,6 +291,8 @@ class AprilTagDetector(Node):
                                 # Order corners
                                 ordered_corners = self.order_points(quad_corners)
                                 
+                                if not self.validate_tag_quality(gray, ordered_corners):
+                                    continue
                                 # Match against tag images
                                 tag_id, rotation = self.match_image(gray, ordered_corners)
 
