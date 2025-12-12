@@ -63,6 +63,14 @@ def generate_launch_description():
             arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_footprint'],
             parameters=[{'use_sim_time': True}]
         ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_footprint_to_base_scan',
+            output='screen',
+            arguments=['0', '0', '0.2', '0', '0', '0', 'base_footprint', 'base_scan'],
+            parameters=[{'use_sim_time': True}]
+        ),
 
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
