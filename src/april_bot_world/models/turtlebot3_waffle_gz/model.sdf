@@ -53,7 +53,7 @@
     <link name="wheel_left_link">
       <!-- x y z roll pitch yaw; rotate wheel so cylinder's axis points along local Y (cylinder default axis is Z,
            rotating -pi/2 about X maps Z->Y) -->
-      <pose>0.0 0.08 -0.002 -1.5708 0 0</pose>
+      <pose>0.0 0.08 -0.045 -1.5708 0 0</pose>
 
       <inertial>
         <mass>0.12</mass>
@@ -102,7 +102,7 @@
 
     <!-- Right Wheel -->
     <link name="wheel_right_link">
-      <pose>0.0 -0.08 -0.002 -1.5708 0 0</pose>
+      <pose>0.0 -0.08 -0.045 -1.5708 0 0</pose>
 
       <inertial>
         <mass>0.12</mass>
@@ -152,7 +152,7 @@
     <!-- Caster (rear) ball: radius ~ 0.012 m, center sits at z = radius above ground -->
     <link name="caster_back_link">
       <!-- position rear of robot: x = -0.081; relative base_link center z = 0.045, so caster z = 0.012 - 0.045 = -0.033 -->
-      <pose>-0.081 0 -0.033 0 0 0</pose>
+      <pose>-0.081 0 -0.066 0 0 0</pose>
 
       <inertial>
         <mass>0.02</mass>
@@ -200,7 +200,7 @@
     <!-- LiDAR link -->
     <link name="base_scan">
       <!-- place lidar near top of base; base_link center is 0.045; lidar center ~0.045 + 0.18 = 0.225 -->
-      <pose>-0.032 0 0.225 0 0 0</pose>
+      <pose>-0.032 0 0.112 0 0 0</pose>
       <inertial>
         <mass>0.125</mass>
         <inertia>
@@ -267,7 +267,7 @@
     <!-- Camera -->
     <link name="camera_rgb_frame">
       <!-- put camera near front/top of base -->
-      <pose>0.073 -0.011 0.1455 0 0 0</pose>
+      <pose>0.073 -0.011 0.127 0 0 0</pose>
       <inertial>
         <mass>0.035</mass>
         <inertia>
