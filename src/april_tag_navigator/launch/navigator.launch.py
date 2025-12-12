@@ -15,6 +15,7 @@ def generate_launch_description():
     pkg_dir = get_package_share_directory('april_tag_navigator')
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
     slam_params_file = os.path.join(pkg_dir, 'config', 'slam_params.yaml')
+    rviz_config_file = os.path.join(pkg_dir, 'config', 'nav_config.rviz') 
 
     navigator_node = Node(
         package='april_tag_navigator',
@@ -84,7 +85,7 @@ def generate_launch_description():
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        arguments= [],
+        arguments= ['-d', rviz_config_file],
         parameters=[{'use_sim_time': use_sim_time}]
     )
     
