@@ -339,10 +339,5 @@
         <falloff>0</falloff>
       </spot>
     </light>
-    <include>
-      <uri>models://turtlebot3_waffle_gz</uri>
-      <name>turtlebot3_waffle</name>
-      <pose>-2.0 -0.5 0.01 0 0 0</pose>
-    </include>
   </world>
 </sdf>
