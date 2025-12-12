@@ -21,11 +21,6 @@
       <background>0.699999988 0.699999988 0.699999988 1</background>
       <shadows>true</shadows>
     </scene>
-    <include>
-      <uri>models://turtlebot3_waffle_gz</uri>
-      <name>turtlebot3_waffle</name>
-      <pose>-2.0 -0.5 0.01 0 0 0</pose>
-    </include>
     <model name='ground_plane'>
       <static>true</static>
       <link name='link'>
@@ -344,5 +339,10 @@
         <falloff>0</falloff>
       </spot>
     </light>
+    <include>
+      <uri>models://turtlebot3_waffle_gz</uri>
+      <name>turtlebot3_waffle</name>
+      <pose>-2.0 -0.5 0.01 0 0 0</pose>
+    </include>
   </world>
 </sdf>
