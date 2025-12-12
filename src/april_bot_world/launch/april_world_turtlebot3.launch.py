@@ -27,6 +27,7 @@ def generate_launch_description():
 <dds>
   <profiles>
 
+    <!-- Define a UDP-only transport -->
     <transport_descriptors>
       <transport_descriptor>
         <transport_id>udp_only</transport_id>
@@ -34,9 +35,10 @@ def generate_launch_description():
       </transport_descriptor>
     </transport_descriptors>
 
+    <!-- Participant using ONLY UDP, SHM disabled -->
     <participant profile_name="udp_profile" is_default_profile="true">
       <rtps>
-        <use_builtin_transports>false</use_builtin_transports>
+        <use_SHM>false</use_SHM>   <!-- Correct way to disable SHM -->
         <user_transports>
           <transport_id>udp_only</transport_id>
         </user_transports>
@@ -45,6 +47,7 @@ def generate_launch_description():
 
   </profiles>
 </dds>
+
     """
         path = os.path.expanduser("~/.ros/fastdds.xml")
         with open(path, 'w') as f:
