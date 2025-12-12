@@ -44,13 +44,13 @@ def generate_launch_description():
             output='screen',
             shell=False
         ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(gz_launch_path),
-            launch_arguments={
-                'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
-                'on_exit_shutdown': 'True'
-            }.items(),
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(gz_launch_path),
+        #     launch_arguments={
+        #         'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
+        #         'on_exit_shutdown': 'True'
+        #     }.items(),
+        # ),
         # TimerAction(
         #     period=3.0,
         #     actions=[
