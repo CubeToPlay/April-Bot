@@ -44,17 +44,17 @@ def generate_launch_description():
             }.items(),
         ),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
+        # ),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
-            launch_arguments={
-                'x_pose': x_pose,
-                'y_pose': y_pose
-            }.items(),
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
+        #     launch_arguments={
+        #         'x_pose': x_pose,
+        #         'y_pose': y_pose
+        #     }.items(),
+        # ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
