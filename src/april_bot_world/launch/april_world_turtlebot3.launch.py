@@ -34,15 +34,22 @@ def generate_launch_description():
             PathJoinSubstitution([pkg_path, 'models'])
         ),
         
-        # SetEnvironmentVariable(
-        #     'TURTLEBOT3_MODEL',
-        #     'waffle'
-        # ),
+        SetEnvironmentVariable(
+            'TURTLEBOT3_MODEL',
+            'waffle'
+        ),
         # Launch Gazebo with your world
         ExecuteProcess(
             cmd=['gz', 'sim', world_path, '-r'],
             output='screen',
             shell=False
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(gz_launch_path),
+            launch_arguments={
+                'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
+                'on_exit_shutdown': 'True'
+            }.items(),
         ),
         # TimerAction(
         #     period=3.0,
@@ -72,9 +79,22 @@ def generate_launch_description():
         #     }.items(),
         # ),
 
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
-        # ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
+        ),
+         Node(
+            package='ros_gz_sim',
+            executable='spawn_entity.py',
+            arguments=[
+                '-topic', 'robot_description',
+                '-entity', 'waffle',
+                '-x', x_pose,
+                '-y', y_pose,
+                '-z', '0.01',
+            ],
+            output='screen',
+            parameters=[{'use_sim_time': True}]
+        ),
 
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
@@ -140,13 +160,14 @@ def generate_launch_description():
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
                 '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+                '/model/waffle/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
                 '/scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
                 '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
                 '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
             ],
             remappings=[
                 ('/camera/image_raw', '/camera/image_raw'),
+                ('/model/waffle/cmd_vel', '/cmd_vel'),
             ],
             parameters=[{
                 'use_sim_time': True,
