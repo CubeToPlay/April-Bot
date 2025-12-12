@@ -35,8 +35,9 @@
           </box>
         </geometry>
         <material>
-          <ambient>0.0 0.0 0.0 1.0</ambient>
-          <diffuse>0.0 0.0 0.0 1.0</diffuse>
+            <ambient>1 0 0 1</ambient>  <!-- Bright red -->
+            <diffuse>1 0 0 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -83,8 +84,9 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0.3 0.3 0.3 1.0</ambient>
-          <diffuse>0.3 0.3 0.3 1.0</diffuse>
+            <ambient>0 0 1 1</ambient>  <!-- Bright blue -->
+            <diffuse>0 0 1 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -131,8 +133,9 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0.3 0.3 0.3 1.0</ambient>
-          <diffuse>0.3 0.3 0.3 1.0</diffuse>
+            <ambient>0 0 1 1</ambient>  <!-- Bright blue -->
+            <diffuse>0 0 1 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -203,8 +206,9 @@
           </cylinder>
         </geometry>
         <material>
-          <ambient>0.0 0.0 0.0 1.0</ambient>
-          <diffuse>0.0 0.0 0.0 1.0</diffuse>
+            <ambient>0 1 0 1</ambient>  <!-- Bright green -->
+            <diffuse>0 1 0 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
       
