@@ -26,6 +26,23 @@
             <size>0.140 0.140 0.143</size>
           </box>
         </geometry>
+        <surface>
+            <contact>
+                <stiffness>100000</stiffness>
+                <damping>80</damping>
+                <bounce>
+                <restitution_coefficient>0.0</restitution_coefficient>
+                <threshold>0.0</threshold>
+                </bounce>
+            </contact>
+            <friction>
+                <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+                <fdir1>0 0 1</fdir1>
+                </ode>
+            </friction>
+        </surface>
       </collision>
       
       <visual name="base_visual">
@@ -64,6 +81,23 @@
             <length>0.018</length>
           </cylinder>
         </geometry>
+        <surface>
+            <contact>
+                <stiffness>100000</stiffness>
+                <damping>80</damping>
+                <bounce>
+                <restitution_coefficient>0.0</restitution_coefficient>
+                <threshold>0.0</threshold>
+                </bounce>
+            </contact>
+            <friction>
+                <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+                <fdir1>0 0 1</fdir1>
+                </ode>
+            </friction>
+        </surface>
       </collision>
       
       <visual name="wheel_left_visual">
@@ -103,6 +137,23 @@
             <length>0.018</length>
           </cylinder>
         </geometry>
+        <surface>
+            <contact>
+                <stiffness>100000</stiffness>
+                <damping>80</damping>
+                <bounce>
+                <restitution_coefficient>0.0</restitution_coefficient>
+                <threshold>0.0</threshold>
+                </bounce>
+            </contact>
+            <friction>
+                <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+                <fdir1>0 0 1</fdir1>
+                </ode>
+            </friction>
+        </surface>
       </collision>
       
       <visual name="wheel_right_visual">
@@ -154,6 +205,23 @@
             <radius>0.005</radius>
           </sphere>
         </geometry>
+        <surface>
+            <contact>
+                <stiffness>100000</stiffness>
+                <damping>80</damping>
+                <bounce>
+                <restitution_coefficient>0.0</restitution_coefficient>
+                <threshold>0.0</threshold>
+                </bounce>
+            </contact>
+            <friction>
+                <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+                <fdir1>0 0 1</fdir1>
+                </ode>
+            </friction>
+        </surface>
       </collision>
     </link>
     
@@ -179,6 +247,23 @@
             <length>0.055</length>
           </cylinder>
         </geometry>
+        <surface>
+            <contact>
+                <stiffness>100000</stiffness>
+                <damping>80</damping>
+                <bounce>
+                <restitution_coefficient>0.0</restitution_coefficient>
+                <threshold>0.0</threshold>
+                </bounce>
+            </contact>
+            <friction>
+                <ode>
+                <mu>1.0</mu>
+                <mu2>1.0</mu2>
+                <fdir1>0 0 1</fdir1>
+                </ode>
+            </friction>
+        </surface>
       </collision>
       
       <visual name="lidar_visual">
