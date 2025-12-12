@@ -79,22 +79,22 @@ def generate_launch_description():
         #     }.items(),
         # ),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
-        ),
-         Node(
-            package='ros_gz_sim',
-            executable='create',
-            arguments=[
-                '-topic', '/robot_description',
-                '-entity', 'waffle',
-                '-x', x_pose,
-                '-y', y_pose,
-                '-z', '0.01',
-            ],
-            output='screen',
-            parameters=[{'use_sim_time': True}]
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
+        # ),
+        #  Node(
+        #     package='ros_gz_sim',
+        #     executable='create',
+        #     arguments=[
+        #         '-topic', '/robot_description',
+        #         '-entity', 'waffle',
+        #         '-x', x_pose,
+        #         '-y', y_pose,
+        #         '-z', '0.01',
+        #     ],
+        #     output='screen',
+        #     parameters=[{'use_sim_time': True}]
+        # ),
 
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
