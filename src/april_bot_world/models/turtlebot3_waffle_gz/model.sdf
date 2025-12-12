@@ -309,6 +309,15 @@
         </lidar>
       </sensor>
     </link>
+
+    <link name="camera_rgb_optical_frame">
+        <pose>0 0 0 -1.5708 0 -1.5708</pose>
+    </link>
+
+    <joint name="camera_rgb_optical_joint" type="fixed">
+        <parent>camera_rgb_frame</parent>
+        <child>camera_rgb_optical_frame</child>
+    </joint>
     
     <!-- Camera Link -->
     <link name="camera_rgb_frame">
@@ -328,7 +337,7 @@
       <!-- Camera Sensor with proper timestamp -->
       <sensor name="camera" type="camera">
         <topic>/camera/image_raw</topic>
-        <gz_frame_id>camera_rgb_frame</gz_frame_id>
+        <gz_frame_id>camera_rgb_optical_frame</gz_frame_id>
         <camera>
           <horizontal_fov>1.085595</horizontal_fov>
           <image>
