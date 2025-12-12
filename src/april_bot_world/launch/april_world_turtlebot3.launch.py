@@ -44,26 +44,26 @@ def generate_launch_description():
             output='screen',
             shell=False
         ),
-        TimerAction(
-            period=3.0,
-            actions=[
-                Node(
-                    package='ros_gz_sim',
-                    executable='create',
-                    name='spawn_turtlebot3',
-                    arguments=[
-                        '-world', 'apriltag_world',
-                        '-name', 'turtlebot3_waffle', 
-                        '-file', os.path.join(models_path, 'turtlebot3_waffle_gz', 'model.sdf'),
-                        '-x', '-2.0',
-                        '-y', '-0.5',
-                        '-z', '0.01',
-                    ],
-                    output='screen',
-                    parameters=[{'use_sim_time': True}]
-                ),
-            ]
-        ),
+        # TimerAction(
+        #     period=3.0,
+        #     actions=[
+        #         Node(
+        #             package='ros_gz_sim',
+        #             executable='create',
+        #             name='spawn_turtlebot3',
+        #             arguments=[
+        #                 '-world', 'apriltag_world',
+        #                 '-name', 'turtlebot3_waffle', 
+        #                 '-file', os.path.join(models_path, 'turtlebot3_waffle_gz', 'model.sdf'),
+        #                 '-x', '-2.0',
+        #                 '-y', '-0.5',
+        #                 '-z', '0.01',
+        #             ],
+        #             output='screen',
+        #             parameters=[{'use_sim_time': True}]
+        #         ),
+        #     ]
+        # ),
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(gz_launch_path),
         #     launch_arguments={
