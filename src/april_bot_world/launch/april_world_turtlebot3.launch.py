@@ -23,26 +23,28 @@ def generate_launch_description():
     models_path = os.path.join(pkg_share, 'models')
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
     def write_fastdds_file(context):
-        xml_content = """<?xml version="1.0" encoding="UTF-8" ?>
-    <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<dds>
+  <profiles>
 
     <transport_descriptors>
-        <transport_descriptor>
+      <transport_descriptor>
         <transport_id>udp_only</transport_id>
         <type>UDPv4</type>
-        </transport_descriptor>
+      </transport_descriptor>
     </transport_descriptors>
 
-    <participant profile_name="disable_shm" is_default_profile="true">
-        <rtps>
+    <participant profile_name="udp_profile" is_default_profile="true">
+      <rtps>
         <use_builtin_transports>false</use_builtin_transports>
         <user_transports>
-            <transport_id>udp_only</transport_id>
+          <transport_id>udp_only</transport_id>
         </user_transports>
-        </rtps>
+      </rtps>
     </participant>
 
-    </profiles>
+  </profiles>
+</dds>
     """
         path = os.path.expanduser("~/.ros/fastdds.xml")
         with open(path, 'w') as f:
