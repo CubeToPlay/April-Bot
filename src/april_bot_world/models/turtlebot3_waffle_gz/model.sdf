@@ -7,7 +7,7 @@
     <link name="base_footprint"/>
     
     <link name="base_link">
-      <pose>0 0 0.01 0 0 0</pose>
+      <pose>0 0 0.0715 0 0 0</pose>
       <inertial>
         <mass>1.0</mass>
         <inertia>
@@ -176,7 +176,7 @@
     
     <!-- LiDAR Link -->
     <link name="base_scan">
-      <pose>-0.032 0 0.172 0 0 0</pose>
+      <pose>-0.032 0 0.2335 0 0 0</pose>
       <inertial>
         <mass>0.125</mass>
         <inertia>
@@ -244,7 +244,7 @@
     
     <!-- Camera Link -->
     <link name="camera_rgb_frame">
-      <pose>0.073 -0.011 0.084 0 0 0</pose>
+      <pose>0.073 -0.011 0.1455 0 0 0</pose>
       <inertial>
         <mass>0.035</mass>
         <inertia>
