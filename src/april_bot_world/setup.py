@@ -11,7 +11,7 @@ def get_model_files():
         for model_name in os.listdir(models_dir):
             model_path = os.path.join(models_dir, model_name)
             if os.path.isdir(model_path):
-                files = glob(os.path.join(model_path, '*'))
+                files = glob.glob(os.path.join(model_path, '*'))
                 if files:  # Only add if directory has files
                     model_files.append((
                         os.path.join('share', package_name, 'models', model_name),
