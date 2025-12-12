@@ -168,6 +168,11 @@ class AprilTagNavigator(Node):
     def map_ready(self):
         if self.map_data is None:
             return False
+        if self.map_msg.info.width == 0 or self.map_msg.info.height == 0:
+            return False
+
+        if len(self.map_msg.data) == 0:
+            return False
         try:
             return self.tf_buffer.can_transform(
                 'map',
