@@ -77,6 +77,7 @@ def generate_launch_description():
             package='ros_gz_bridge',
             executable='parameter_bridge',
             arguments=[
+                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
                 '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
                 '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
