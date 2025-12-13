@@ -299,43 +299,63 @@ class AprilTagDetector(Node):
         size = 300
         dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype=np.float32)
         corners = self.order_points(corners).astype(np.float32)
-    
+        
         M = cv2.getPerspectiveTransform(corners, dst)
         warped = cv2.warpPerspective(gray, M, (size, size), flags=cv2.INTER_LINEAR)
-
-        warped_bin = cv2.adaptiveThreshold(
-            warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        
+        # Try multiple thresholding methods and pick the best one
+        threshold_methods = []
+        
+        # Method 1: Otsu
+        _, thresh1 = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        threshold_methods.append(thresh1)
+        
+        # Method 2: Adaptive Gaussian
+        thresh2 = cv2.adaptiveThreshold(
+            warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY, 11, 2
         )
-
-        border = int(size * 0.15)  # 15% border
-        inner = warped_bin[border:-border, border:-border]
+        threshold_methods.append(thresh2)
         
-        # Resize to 6x6 grid
-        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+        # Method 3: Adaptive Mean
+        thresh3 = cv2.adaptiveThreshold(
+            warped, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+            cv2.THRESH_BINARY, 11, 2
+        )
+        threshold_methods.append(thresh3)
         
-        # Convert to binary bits
-        bits = (grid > 127).astype(np.uint8)
-
-        # if not self.has_valid_border(warped_bin):
-        #     return None
-
-        # # if not self.border_is_continuous(warped_bin):
-        # #     return None
-        # if not self.has_strong_cell_contrast(warped_bin):
-        #     return None
-        # Decode bits
+        # Method 4: Fixed threshold at mean
+        mean_val = np.mean(warped)
+        _, thresh4 = cv2.threshold(warped, mean_val, 255, cv2.THRESH_BINARY)
+        threshold_methods.append(thresh4)
         
-        # Debug: Check if bits are reasonable (should have mix of 0s and 1s)
-        ones_count = np.sum(bits)
-        if ones_count == 0 or ones_count == 36:
-            # All zeros or all ones - bad extraction
-            self.get_logger().warn(
-                f'Bad bit extraction: {ones_count}/36 ones',
-                throttle_duration_sec=2.0
-            )
+        # Extract bits using each method and pick the one with best characteristics
+        best_bits = None
+        best_score = -1
+        
+        for thresh in threshold_methods:
+            border = int(size * 0.15)
+            inner = thresh[border:-border, border:-border]
+            grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+            bits = (grid > 127).astype(np.uint8)
+            
+            # Score based on how reasonable the bit pattern looks
+            ones_count = np.sum(bits)
+            
+            # Good tags have between 30-70% ones (not all 0s or all 1s)
+            if 10 < ones_count < 26:  # Between 28% and 72%
+                # Also check for some structure (not random noise)
+                score = min(ones_count, 36 - ones_count)  # Prefer balanced patterns
+                
+                if score > best_score:
+                    best_score = score
+                    best_bits = bits
+        
+        if best_bits is None:
+            self.get_logger().warn('All threshold methods failed', throttle_duration_sec=2.0)
             return None
-        return bits
+        
+        return best_bits
     
     def detect_apriltags(self, img):
         """Detects all AprilTags in the given image, using two methods in order to detect corners of AprilTags"""
