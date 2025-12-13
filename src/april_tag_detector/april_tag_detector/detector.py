@@ -118,9 +118,16 @@ class AprilTagDetector(Node):
     def load_tag36h11_codes(self):
         codes = {}
         for tag_id, data in self.tags.items():
-            bits = self.extract_bit_grid_from_image(data['image'])
+            bits = self.extract_inner_bits(data['image'])
             codes[tag_id] = bits
         return codes
+    def extract_inner_bits(img):
+        size = img.shape[0]
+        border = int(size * 0.25)  # 25% border
+        inner = img[border:-border, border:-border]
+        grid = cv2.resize(inner, (4,4), interpolation=cv2.INTER_AREA)
+        bits = (grid < 128).astype(int)  # black=1, white=0
+        return bits.flatten()
     
     def camera_info_callback(self, msg):
         """Store camera calibration"""
@@ -204,7 +211,7 @@ class AprilTagDetector(Node):
                 dst = np.array([[0,0],[warp_size-1,0],[warp_size-1,warp_size-1],[0,warp_size-1]], dtype=np.float32)
                 M = cv2.getPerspectiveTransform(quad, dst)
                 warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-                tag_bits = self.decode(warped, tag_size)
+                tag_bits = self.extract_inner_bits(warped)
                 tag_id = self.match_tag_bits(tag_bits)
                 if tag_id is not None:
                     detected_tags.append({'id': tag_id, 'corners': quad, 'center': np.mean(quad, axis=0)})
