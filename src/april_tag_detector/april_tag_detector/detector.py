@@ -298,13 +298,13 @@ class AprilTagDetector(Node):
         )
 
         _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY  + cv2.THRESH_OTSU)
-        if not self.has_valid_border(warped_bin):
-            return None
-
-        # if not self.border_is_continuous(warped_bin):
+        # if not self.has_valid_border(warped_bin):
         #     return None
-        if not self.has_strong_cell_contrast(warped_bin):
-            return None
+
+        # # if not self.border_is_continuous(warped_bin):
+        # #     return None
+        # if not self.has_strong_cell_contrast(warped_bin):
+        #     return None
         # Decode bits
         bits = self.decode(warped_bin)
         return bits
