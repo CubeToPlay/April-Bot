@@ -128,20 +128,15 @@ class AprilTagDetector(Node):
 
     def load_tag36h11_codes(self):
         codes = {}
-
         for tag_id, data in self.tags.items():
             img = data['image']
-
-            # Inner 6x6 grid
             size = img.shape[0]
-            cell = size // 8
-            inner = img[cell:-cell, cell:-cell]
-
+            border = int(size * 0.15)
+            inner = img[border:-border, border:-border]
             grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
             bits = (grid > 127).astype(np.uint8)
-
             codes[tag_id] = bits
-
+        
         self.get_logger().info(f"Loaded {len(codes)} tag codes")
         return codes
     
@@ -260,20 +255,20 @@ class AprilTagDetector(Node):
         """Combined validation for tag quality"""
         # Check if tag is complete (not cut off by image edge)
         return self.check_tag_completeness(corners, gray_img.shape)
-    def has_valid_border(self, warped_bin, border_frac=0.12, min_ratio=0.85):
+    
+    def has_valid_border(self, warped_bin, border_frac=0.12, min_ratio=0.70):
         h, w = warped_bin.shape
         b = int(min(h, w) * border_frac)
 
         borders = np.concatenate([
-            warped_bin[:b, :].ravel(),        # top
-            warped_bin[-b:, :].ravel(),       # bottom
-            warped_bin[:, :b].ravel(),        # left
-            warped_bin[:, -b:].ravel()        # right
+            warped_bin[:b, :].ravel(),
+            warped_bin[-b:, :].ravel(),
+            warped_bin[:, :b].ravel(),
+            warped_bin[:, -b:].ravel()
         ])
 
-        # Border MUST be black
-        black_ratio = np.mean(borders == 255)
-        return black_ratio > min_ratio
+        white_ratio = np.mean(borders == 255)
+        return white_ratio > min_ratio
     
     def border_is_continuous(self, warped_bin):
         edges = cv2.Canny(warped_bin, 50, 150)
@@ -479,7 +474,7 @@ class AprilTagDetector(Node):
         border = size // 7
 
         inner = warped_bin[border:-border, border:-border]
-        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_NEAREST)
+        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
 
         bits = (grid > 127).astype(np.uint8)
 
