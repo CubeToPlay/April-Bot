@@ -22,8 +22,15 @@ def generate_launch_description():
     y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
     models_path = os.path.join(pkg_share, 'models')
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
+    apriltag_resources_path = os.path.join(
+        get_package_share_directory('apriltag_resources'),
+        'models'
+    )
     return LaunchDescription([
-
+        SetEnvironmentVariable(
+            name='GZ_SIM_MODEL_PATH',
+            value=apriltag_resources_path
+        ),
         SetEnvironmentVariable(
             'GZ_SIM_RESOURCE_PATH',
             PathJoinSubstitution([pkg_path, 'models'])
