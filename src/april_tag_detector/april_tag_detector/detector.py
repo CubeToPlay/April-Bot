@@ -253,6 +253,12 @@ class AprilTagDetector(Node):
                     "corners": quad,
                     "center": np.mean(quad, axis=0)
                 })
+            else:
+                detected_tags.append({
+                    "id": -1,
+                    "corners": quad,
+                    "center": np.mean(quad, axis=0)
+                })
 
         return detected_tags
 
