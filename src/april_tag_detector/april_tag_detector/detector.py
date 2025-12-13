@@ -86,7 +86,7 @@ class AprilTagDetector(Node):
             self.get_logger().warn(f'Template directory not found: {self.tag_dir}')
             return
         # It is looking for files that match the pattern: tag36h11-<id>.png
-        # For each tag image, it extracts the id from the filename, loads it in grayscale, resizes it to 300 x 300, applies Otsu's thresholding to create a binary image, generates 4 rotations of the image, and stores it in the self.tags dictionary
+        # For each tag image, it extracts the id from the filename, loads it in grayscale, resizes it to 300 x 300, generates 4 rotations of the image, and stores it in the self.tags dictionary
         for filename in os.listdir(self.tag_dir):
             if filename.startswith('tag36h11-') and (filename.endswith('.png')):
                 # Extract ID from filename
@@ -100,7 +100,7 @@ class AprilTagDetector(Node):
 
                 if image is not None:
                     image = cv2.resize(image, (300, 300))
-                    _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                    _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY)
 
                     rotations = [
                         image,
@@ -149,15 +149,6 @@ class AprilTagDetector(Node):
             self.dist_coeffs = np.array(msg.d) if len(msg.d) > 0 else np.zeros(5)
             self.camera_frame = msg.header.frame_id
             self.get_logger().info(f'Camera calibration received. Frame: {self.camera_frame}')
-
-    def has_inner_pattern(self, gray_img, corners):
-        """Check if the quadrilateral contains an actual AprilTag pattern (black/white tiles)"""
-        bits = self.extract_bit_grid(gray_img, corners)
-
-        if bits.min() == bits.max():
-            return False
-        return self.match_known_apriltag(bits)
-
     
     def check_tag_completeness(self, corners, img_shape):
         """Check if all 4 corners are well within the image bounds"""
@@ -178,6 +169,8 @@ class AprilTagDetector(Node):
         bits: 6x6 numpy array of {0,1}
         Returns (tag_id, rotation) or (None, None)
         """
+        if bits is None or bits.shape != (6,6):
+            return None, None
 
         def rotate(bits, k):
             return np.rot90(bits, k)
@@ -210,14 +203,15 @@ class AprilTagDetector(Node):
     def validate_tag_quality(self, gray_img, corners):
         """Combined validation for tag quality"""
         # Check if tag is complete (not cut off by image edge)
-        if not self.check_tag_completeness(corners, gray_img.shape):
-            return False
-        
-        # Check if it has actual AprilTag pattern
-        if not self.has_inner_pattern(gray_img, corners):
-            return False
-        
+        return self.check_tag_completeness(corners, gray_img.shape):
+    
+    def is_strict_black_white(self, img, eps=5):
+        vals = np.unique(img)
+        for v in vals:
+            if not (v < eps or v > 255 - eps):
+                return False
         return True
+
     def extract_bit_grid(self, gray, corners, grid_size=6):
         size = 300
         dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype=np.float32)
@@ -227,17 +221,15 @@ class AprilTagDetector(Node):
             gray, M, (size, size), flags=cv2.INTER_NEAREST
         )
 
-        # Crop border (1-cell border for AprilTag)
-        cell = size // (grid_size + 2)
-        inner = warped[cell:-cell, cell:-cell]
+        # HARD REJECT GREY OBJECTS
+        if not self.is_strict_black_white(warped):
+            return None
 
-        # Downsample to grid_size x grid_size
-        grid = cv2.resize(inner, (grid_size, grid_size), interpolation=cv2.INTER_AREA)
+        # FIXED threshold (NO OTSU)
+        _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
 
-        # Convert to bits by relative intensity
-        mean = np.mean(grid)
-        bits = (grid > mean).astype(np.uint8)
-
+        # Decode bits STRICTLY
+        bits = self.strict_decode(warped_bin)
         return bits
     
     def detect_apriltags(self, img):
@@ -311,6 +303,8 @@ class AprilTagDetector(Node):
                                     continue
                                 # Match against tag images
                                 bits = self.extract_bit_grid(gray, ordered_corners)
+                                if bits is None:
+                                    continue
                                 tag_id, rotation = self.matches_known_apriltag(bits)
 
                                 if tag_id is None:
@@ -403,6 +397,27 @@ class AprilTagDetector(Node):
         rect[3] = pts[np.argmax(diff)]  # Bottom-left
         
         return rect
+    def strict_decode(self, warped_bin):
+        size = warped_bin.shape[0]
+        border = size // 7
+
+        inner = warped_bin[border:-border, border:-border]
+        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_NEAREST)
+
+        bits = (grid == 255).astype(np.uint8)
+
+        # reject if tiles aren't uniform
+        for i in range(6):
+            for j in range(6):
+                tile = inner[
+                    i*inner.shape[0]//6:(i+1)*inner.shape[0]//6,
+                    j*inner.shape[1]//6:(j+1)*inner.shape[1]//6
+                ]
+                ratio = np.mean(tile == tile[0, 0])
+                if ratio < 0.95:
+                    return None
+
+        return bits
     
     # def match_image(self, gray_img, corners):
     #     """Match warped tag with given tag images"""
