@@ -61,6 +61,8 @@ class AprilTagDetector(Node):
         if self.tag_dir:
             self.load_tags()
         self.valid_tag_codes = self.load_tag36h11_codes()
+
+        self.verify_templates()
         
         self.image_sub = self.create_subscription(
             Image,
