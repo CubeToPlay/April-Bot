@@ -129,7 +129,7 @@ class AprilTagDetector(Node):
         bits = (grid < 128).astype(int)  # black=1, white=0
         return bits.flatten()
     
-    def match_template(self, bits):
+    def match_template(self, bits, match_threshold=14):
         best_match = None
         best_score = -1
         for tag_id, template_bits in self.templates.items():
@@ -137,7 +137,7 @@ class AprilTagDetector(Node):
             if score > best_score:
                 best_score = score
                 best_match = tag_id
-        if best_score >= self.match_threshold:
+        if best_score >= match_threshold:
             return best_match
         return None
     
@@ -203,7 +203,7 @@ class AprilTagDetector(Node):
                 return tag_id
         return None
 
-    def find_apriltags_contours(self, image, min_size=20, tag_size=6):
+    def find_apriltags_contours(self, image, min_size=20, tag_size=6, warp_size=200):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                cv2.THRESH_BINARY, 11, 2)
@@ -226,12 +226,12 @@ class AprilTagDetector(Node):
             quad = self.order_points(quad)
             dst = np.array([
                 [0,0],
-                [self.warp_size-1,0],
-                [self.warp_size-1,self.warp_size-1],
-                [0,self.warp_size-1]
+                [warp_size-1,0],
+                [warp_size-1,warp_size-1],
+                [0,warp_size-1]
             ], dtype=np.float32)
             M = cv2.getPerspectiveTransform(quad, dst)
-            warped = cv2.warpPerspective(gray, M, (self.warp_size, self.warp_size))
+            warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
             warped = cv2.adaptiveThreshold(
                 warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                 cv2.THRESH_BINARY, 11, 2
