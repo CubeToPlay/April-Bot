@@ -298,13 +298,25 @@ class AprilTagDetector(Node):
     def extract_bit_grid(self, gray, corners, grid_size=6):
         size = 300
         dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype=np.float32)
+        corners = self.order_points(corners).astype(np.float32)
+    
         M = cv2.getPerspectiveTransform(corners, dst)
+        warped = cv2.warpPerspective(gray, M, (size, size), flags=cv2.INTER_LINEAR)
 
-        warped = cv2.warpPerspective(
-            gray, M, (size, size), flags=cv2.INTER_NEAREST
+        warped_bin = cv2.adaptiveThreshold(
+            warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv2.THRESH_BINARY, 11, 2
         )
 
-        _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY  + cv2.THRESH_OTSU)
+        border = int(size * 0.15)  # 15% border
+        inner = warped_bin[border:-border, border:-border]
+        
+        # Resize to 6x6 grid
+        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+        
+        # Convert to binary bits
+        bits = (grid > 127).astype(np.uint8)
+
         # if not self.has_valid_border(warped_bin):
         #     return None
 
@@ -313,7 +325,16 @@ class AprilTagDetector(Node):
         # if not self.has_strong_cell_contrast(warped_bin):
         #     return None
         # Decode bits
-        bits = self.extract_bit_grid_from_image(warped_bin)
+        
+        # Debug: Check if bits are reasonable (should have mix of 0s and 1s)
+        ones_count = np.sum(bits)
+        if ones_count == 0 or ones_count == 36:
+            # All zeros or all ones - bad extraction
+            self.get_logger().warn(
+                f'Bad bit extraction: {ones_count}/36 ones',
+                throttle_duration_sec=2.0
+            )
+            return None
         return bits
     
     def detect_apriltags(self, img):
