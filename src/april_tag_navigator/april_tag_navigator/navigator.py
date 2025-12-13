@@ -172,10 +172,11 @@ class AprilTagNavigator(Node):
         if len(self.map_data) == 0:
             return False
         try:
-            transform = self.tf_buffer.lookup_transform(
-                'map', 'base_link',
+            return self.tf_buffer.can_transform(
+                'map',
+                'base_link',
                 rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
+                timeout=rclpy.duration.Duration(seconds=0.2)
             )
         except Exception:
             return False
@@ -188,9 +189,10 @@ class AprilTagNavigator(Node):
         try:
             # Try to get the transform
             transform = self.tf_buffer.lookup_transform(
-                'map', 'base_link',
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
+                'map',
+                'base_link',
+                rclpy.time.Time(),  # Get latest
+                timeout=rclpy.duration.Duration(seconds=0.5)
             )
             
             self.get_logger().info(
@@ -308,7 +310,7 @@ class AprilTagNavigator(Node):
         """Get robot pose from SLAM"""
         try:
             transform = self.tf_buffer.lookup_transform(
-                'map', 'base_footprint',
+                'map', 'base_link',
                 rclpy.time.Time(),
                 timeout=rclpy.duration.Duration(seconds=0.1)
             )
@@ -324,13 +326,13 @@ class AprilTagNavigator(Node):
             )
         except TransformException as ex:
             self.get_logger().warn(
-                f'Could not transform map to base_footprint: {ex}',
+                f'Could not transform map to base_link: {ex}',
                 throttle_duration_sec=5.0
             )
             try:
-                # Check if odom->base_footprint exists (should be from Gazebo)
+                # Check if odom->base_link exists (should be from Gazebo)
                 transform = self.tf_buffer.lookup_transform(
-                    'odom', 'base_footprint',
+                    'odom', 'base_link',
                     rclpy.time.Time(),
                     timeout=rclpy.duration.Duration(seconds=0.5)
                 )
