@@ -135,27 +135,24 @@
     </collision>
 
     <!-- LiDAR SENSOR -->
-    <sensor name="lidar" type="gpu_lidar">
-        <always_on>true</always_on>
-        <update_rate>10</update_rate>
-        <topic>/scan</topic>
-        <gz_frame_id>base_scan</gz_frame_id>
-        <visualize>true</visualize>
+    <sensor name="lidar" type="ray">
+      <always_on>true</always_on>
+      <update_rate>10</update_rate>
+      <visualize>true</visualize>
 
-        <lidar>
+      <ray>
         <scan>
-            <horizontal>
+          <horizontal>
             <samples>360</samples>
             <min_angle>-3.14159</min_angle>
             <max_angle>3.14159</max_angle>
-            <visualize>true</visualize>
-            </horizontal>
+          </horizontal>
         </scan>
         <range>
-            <min>0.12</min>
-            <max>3.5</max>
+          <min>0.05</min>
+          <max>3.5</max>
         </range>
-        </lidar>
+      </ray>
     </sensor>
     </link>
 

@@ -375,7 +375,7 @@ class AprilTagDetector(Node):
             approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
             area = cv2.contourArea(cnt)
             
-            if area < 400:
+            if area < 1500:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
