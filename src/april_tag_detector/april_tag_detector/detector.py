@@ -35,7 +35,7 @@ class AprilTagDetector(Node):
 
         self.max_hamming = 0
 
-        self.min_confirm_time = 0.3  # seconds
+        self.min_confirm_time = 0.5  # seconds
         self.max_center_jump = 30.0  # pixels
 
         self.tag_tracks = {}  
