@@ -33,7 +33,7 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
-        self.max_hamming = 2
+        self.max_hamming = 4
 
         self.min_confirm_time = 0.2  # seconds
         self.max_center_jump = 50.0  # pixels
@@ -254,13 +254,13 @@ class AprilTagDetector(Node):
         grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
         vals = grid.flatten()
 
-        return np.std(vals) > 60
+        return np.std(vals) > 40
 
     def validate_tag_quality(self, gray_img, corners):
         """Combined validation for tag quality"""
         # Check if tag is complete (not cut off by image edge)
         return self.check_tag_completeness(corners, gray_img.shape)
-    def has_valid_black_border(self, warped_bin, border_frac=0.12, min_ratio=0.85):
+    def has_valid_border(self, warped_bin, border_frac=0.12, min_ratio=0.85):
         h, w = warped_bin.shape
         b = int(min(h, w) * border_frac)
 
@@ -272,7 +272,7 @@ class AprilTagDetector(Node):
         ])
 
         # Border MUST be black
-        black_ratio = np.mean(borders == 0)
+        black_ratio = np.mean(borders == 255)
         return black_ratio > min_ratio
     
     def border_is_continuous(self, warped_bin):
@@ -298,15 +298,15 @@ class AprilTagDetector(Node):
         )
 
         _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY  + cv2.THRESH_OTSU)
-        if not self.has_valid_black_border(warped_bin):
+        if not self.has_valid_border(warped_bin):
             return None
 
         # if not self.border_is_continuous(warped_bin):
         #     return None
         if not self.has_strong_cell_contrast(warped_bin):
             return None
-        # Decode bits STRICTLY
-        bits = self.strict_decode(warped_bin)
+        # Decode bits
+        bits = self.decode(warped_bin)
         return bits
     
     def detect_apriltags(self, img):
@@ -474,25 +474,14 @@ class AprilTagDetector(Node):
         rect[3] = pts[np.argmax(diff)]  # Bottom-left
         
         return rect
-    def strict_decode(self, warped_bin):
+    def decode(self, warped_bin):
         size = warped_bin.shape[0]
         border = size // 7
 
         inner = warped_bin[border:-border, border:-border]
         grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_NEAREST)
 
-        bits = (grid == 255).astype(np.uint8)
-
-        # reject if tiles aren't uniform
-        for i in range(6):
-            for j in range(6):
-                tile = inner[
-                    i*inner.shape[0]//6:(i+1)*inner.shape[0]//6,
-                    j*inner.shape[1]//6:(j+1)*inner.shape[1]//6
-                ]
-                ratio = np.mean(tile == tile[0, 0])
-                if ratio < 0.95:
-                    return None
+        bits = (grid > 127).astype(np.uint8)
 
         return bits
     
