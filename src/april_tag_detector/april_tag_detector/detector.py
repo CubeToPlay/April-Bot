@@ -136,12 +136,11 @@ class AprilTagDetector(Node):
         
         self.get_logger().info(f'Verification images saved to: {output_dir}')
     def load_tags(self):
-        """Load AprilTag images from directory
-        AprilTag format: tag36h11-<id>.png
-        """
+        """Load AprilTag images from directory"""
         if not os.path.exists(self.tag_dir):
             self.get_logger().warn(f'Template directory not found: {self.tag_dir}')
             return
+        
         for filename in os.listdir(self.tag_dir):
             if filename.startswith('tag36h11-') and filename.endswith('.png'):
                 try:
@@ -149,14 +148,44 @@ class AprilTagDetector(Node):
                 except:
                     self.get_logger().warn(f'Could not parse tag ID from: {filename}')
                     continue
+                
                 filepath = os.path.join(self.tag_dir, filename)
                 image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+                
                 if image is not None:
-                    image = self.strip_white_outline(image)
-                    image = cv2.resize(image, (240, 240))
-                    _, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY)
+                    # AprilTag images are typically 10x10 pixels with 1-pixel border
+                    # Find the inner 8x8 region (the actual tag with its white border)
+                    # Standard AprilTag images have format:
+                    # - 1 pixel outer border
+                    # - 8x8 tag (1 white border + 6x6 data grid + 1 white border)
+                    
+                    h, w = image.shape
+                    
+                    # If image is exactly 10x10, crop to inner 8x8
+                    if h == 10 and w == 10:
+                        image = image[1:9, 1:9]
+                    elif h > 10 and w > 10:
+                        # For larger images, crop to center 80%
+                        border = int(h * 0.1)
+                        image = image[border:-border, border:-border]
+                    
+                    # Resize to 240x240 for consistent processing
+                    # 240 is divisible by 6 (40 pixels per cell) and 8 (30 pixels per cell)
+                    image = cv2.resize(image, (240, 240), interpolation=cv2.INTER_AREA)
+                    
+                    # Binarize
+                    _, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+                    
+                    # Ensure correct polarity (corners should be white)
+                    if np.mean([image[0,0], image[0,-1], image[-1,0], image[-1,-1]]) < 128:
+                        image = 255 - image
+                    
                     self.tags[tag_id] = image
-                    self.get_logger().info(f'Loaded image for tag ID {tag_id}')
+                    self.get_logger().info(f'✓ Loaded tag ID {tag_id}')
+                    
+                    # Debug save
+                    cv2.imshow(f'/tmp/tag_{tag_id}_loaded.png', image)
+        
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     def decode_template(self, img):
         # black = 1
