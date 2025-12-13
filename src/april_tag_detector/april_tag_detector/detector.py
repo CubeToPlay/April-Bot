@@ -574,22 +574,10 @@ class AprilTagDetector(Node):
 
         R_cv, _ = cv2.Rodrigues(rvec)
 
-        # OpenCV → ROS rotation
-        R_cv_to_ros = np.array([
-            [0,  0,  1],
-            [-1, 0,  0],
-            [0, -1,  0]
-        ])
-        R_ros = R_cv_to_ros @ R_cv
-        quat = self.rotation_matrix_to_quaternion(R_ros)
+        quat = self.rotation_matrix_to_quaternion(R_cv)
 
         # OpenCV → ROS translation
-        tvec = tvec.flatten()
-        position = np.array([
-            tvec[2],
-        -tvec[0],
-        -tvec[1]
-        ])
+        position = tvec.flatten()
 
         return {
             'position': position,
