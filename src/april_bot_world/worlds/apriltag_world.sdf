@@ -88,7 +88,6 @@
           <geometry>
             <mesh>
               <uri>apriltag_id_0.dae</uri>
-              <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
         </visual>
@@ -124,7 +123,6 @@
           <geometry>
             <mesh>
               <uri>apriltag_id_1.dae</uri>
-              <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
         </visual>
@@ -160,7 +158,6 @@
           <geometry>
             <mesh>
               <uri>apriltag_id_2.dae</uri>
-              <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
         </visual>
@@ -196,7 +193,6 @@
           <geometry>
             <mesh>
               <uri>apriltag_id_3.dae</uri>
-              <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
         </visual>
@@ -232,7 +228,6 @@
           <geometry>
             <mesh>
               <uri>apriltag_id_4.dae</uri>
-              <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
         </visual>
