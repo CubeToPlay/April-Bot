@@ -33,7 +33,7 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
-        self.max_hamming = 2
+        self.max_hamming = 0
 
         self.bridge = CvBridge()
 
@@ -211,6 +211,33 @@ class AprilTagDetector(Node):
             if not (v < eps or v > 255 - eps):
                 return False
         return True
+    def has_valid_black_border(self, warped_bin, border_frac=0.12, min_ratio=0.98):
+        h, w = warped_bin.shape
+        b = int(min(h, w) * border_frac)
+
+        borders = np.concatenate([
+            warped_bin[:b, :].ravel(),        # top
+            warped_bin[-b:, :].ravel(),       # bottom
+            warped_bin[:, :b].ravel(),        # left
+            warped_bin[:, -b:].ravel()        # right
+        ])
+
+        # Border MUST be black
+        black_ratio = np.mean(borders == 0)
+        return black_ratio > min_ratio
+    
+    def border_is_continuous(self, warped_bin):
+        edges = cv2.Canny(warped_bin, 50, 150)
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return False
+
+        largest = max(contours, key=cv2.contourArea)
+        peri = cv2.arcLength(largest, True)
+
+        # partial tags have broken perimeters
+        return peri > 0.9 * (4 * warped_bin.shape[0])
 
     def extract_bit_grid(self, gray, corners, grid_size=6):
         size = 300
@@ -227,7 +254,11 @@ class AprilTagDetector(Node):
 
         # FIXED threshold (NO OTSU)
         _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
+        if not self.has_valid_black_border(warped_bin):
+            return None
 
+        if not self.border_is_continuous(warped_bin):
+            return None
         # Decode bits STRICTLY
         bits = self.strict_decode(warped_bin)
         return bits
