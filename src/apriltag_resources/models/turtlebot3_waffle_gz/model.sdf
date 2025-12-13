@@ -22,6 +22,7 @@
 
       <!-- BIG FLAT CONTACT PATCH -->
       <collision name="base_collision">
+        <pose>0 0 0.08</pose>
         <geometry>
           <box>
             <size>0.22 0.22 0.06</size>
@@ -42,9 +43,10 @@
       </collision>
 
       <visual name="base_visual">
+      <pose>0 0 0.08</pose>
         <geometry>
           <box>
-            <size>0.22 0.22 0.10</size>
+            <size>0.22 0.22 0.06</size>
           </box>
         </geometry>
       </visual>
@@ -53,7 +55,7 @@
     <!-- ================= LIDAR ================= -->
     <link name="base_scan">
     <!-- Centered on robot, slightly above base -->
-    <pose>0 0 0.18 0 0 0</pose>
+    <pose>0 0 0.1 0 0 0</pose>
 
     <inertial>
         <mass>0.05</mass>
@@ -109,7 +111,7 @@
 
     <!-- ================= LEFT WHEEL ================= -->
     <link name="wheel_left_link">
-      <pose>0 0.119 0.028 1.5708 0 0</pose>
+      <pose>0  0.119 0.033 1.5708 0 0</pose>
 
       <inertial>
         <mass>0.18</mass>
@@ -153,7 +155,7 @@
 
     <!-- ================= RIGHT WHEEL ================= -->
     <link name="wheel_right_link">
-      <pose>0 -0.119 0.028 1.5708 0 0</pose>
+      <pose>0 -0.119 0.033 1.5708 0 0</pose>
 
       <inertial>
         <mass>0.18</mass>
@@ -197,7 +199,7 @@
 
     <!-- ================= CASTER ================= -->
     <link name="caster_back_link">
-      <pose>-0.11 0 0.012 0 0 0</pose>
+      <pose>-0.11 0 0.015 0 0 0</pose>
 
       <inertial>
         <mass>0.08</mass>
