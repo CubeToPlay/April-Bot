@@ -207,12 +207,27 @@ class AprilTagDetector(Node):
 
             for tag_id, template in self.valid_tag_codes.items():
                 score = np.sum(inner == template)
+                if score > 10:  # Only show decent matches
+                    self.get_logger().info(f"  Tag {tag_id}: score={score}/16")
+                    if score >= 14:  # Close match - show details
+                        self.get_logger().info(f"    Template: {template}")
+                        self.get_logger().info(f"    Detected: {inner}")
+                        self.get_logger().info(f"    Reshaped template:\n{template.reshape(4,4)}")
+                        self.get_logger().info(f"    Reshaped detected:\n{inner.reshape(4,4)}")
+                
                 if score > best_score:
                     best_score = score
                     best_id = tag_id
 
-        if best_score >= (16 - self.max_hamming):
+        threshold = 16 - self.max_hamming
+        self.get_logger().info(f"\nBest match: ID={best_id}, score={best_score}, threshold={threshold}")
+        
+        if best_score >= threshold:
+            self.get_logger().info(f"MATCHED TAG {best_id}!")
             return best_id
+        else:
+            self.get_logger().warn(f"NO MATCH (best score {best_score} < threshold {threshold})")
+        
         return None
 
 
