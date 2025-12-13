@@ -182,7 +182,7 @@ class AprilTagDetector(Node):
             ])
             print("BITS:\n", bits)
             print("BORDER:", border.mean())
-            
+
             if np.mean(border) < 0.75:
                 continue
 
@@ -291,7 +291,7 @@ class AprilTagDetector(Node):
         detected_tags = []
 
         if hierarchy is None:
-            return detected_tags
+            return detected_tags, None
 
         for i, cnt in enumerate(contours):
             area = cv2.contourArea(cnt)
