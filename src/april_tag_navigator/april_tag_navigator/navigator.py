@@ -530,9 +530,9 @@ class AprilTagNavigator(Node):
         for my in range(1, self.map_height - 1):
             for mx in range(1, self.map_width - 1):
 
-                # must be free
-                if self.map_data[my, mx] != 0:
-                    continue
+                # # must be free
+                # if self.map_data[my, mx] != 0:
+                #     continue
 
                 # check if adjacent to unknown
                 neighbors = [
