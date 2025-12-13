@@ -195,7 +195,7 @@ class AprilTagDetector(Node):
     
     def check_tag_completeness(self, corners, img_shape):
         """Check if all 4 corners are well within the image bounds"""
-        margin = 20  # pixels from edge
+        margin = 10  # pixels from edge
         height, width = img_shape[:2]
         
         for corner in corners:
@@ -316,12 +316,13 @@ class AprilTagDetector(Node):
         corners_detected = cv2.goodFeaturesToTrack(
             blurred,
             maxCorners=500, # Find up to 500 corners
-            qualityLevel=0.01, # Minimum quality threshold
-            minDistance=10, # Minimum pixel distance between corners
+            qualityLevel=0.005, # Minimum quality threshold
+            minDistance=5, # Minimum pixel distance between corners
             blockSize=7 # Size of neighborhood for corner detection
         )
         
         if corners_detected is None:
+            self.get_logger().warn('No corners detected!', throttle_duration_sec=2.0)
             return []
         
         corners_detected = corners_detected.reshape(-1, 2)
@@ -350,6 +351,7 @@ class AprilTagDetector(Node):
             # Grid-based clustering: Divides images into overlapping grid regions, where each region is checked for corner clusters
             grid_x = np.arange(0, gray.shape[1], window_size)
             grid_y = np.arange(0, gray.shape[0], window_size)
+            
 
             # For each grid cell, it finds all corners in the window and if more than 4 corners are found, select_quadrilateral_corners is called to form a 4-sided shape, which is validated with validate_quadrilateral.
             # The corners are consistently ordered with order_points
@@ -360,27 +362,34 @@ class AprilTagDetector(Node):
                     mask_x = (corners[:, 0] >= x) & (corners[:, 0] < x + window_size)
                     mask_y = (corners[:, 1] >= y) & (corners[:, 1] < y + window_size)
                     region_corners = corners[mask_x & mask_y]
+                    self.get_logger().info(f'Checking window at ({x},{y}), found {len(region_corners)} corners', 
+                       throttle_duration_sec=5.0)
 
                     if len(region_corners) >= 4:
                         # Take the 4 most extreme corners
                         quad_corners = self.select_quadrilateral_corners(region_corners)
 
                         if quad_corners is not None:
+                            self.get_logger().info('Found a quadrilateral!', throttle_duration_sec=2.0)
                             # Verify this looks like a tag
                             if self.validate_quadrilateral(quad_corners):
                                 # Order corners
                                 ordered_corners = self.order_points(quad_corners)
                                 
-                                if not self.validate_tag_quality(gray, ordered_corners):
-                                    continue
+                                # if not self.validate_tag_quality(gray, ordered_corners):
+                                #     continue
                                 # Match against tag images
                                 bits = self.extract_bit_grid(gray, ordered_corners)
                                 if bits is None:
+                                    self.get_logger().warn('Bit extraction failed!', throttle_duration_sec=2.0)
                                     continue
+                                else:
+                                    self.get_logger().info(f'Extracted bits successfully', throttle_duration_sec=2.0)
                                 tag_id, rotation = self.matches_known_apriltag(bits)
 
                                 if tag_id is None:
                                     continue
+                                self.get_logger().info(f'Match result: ID={tag_id}, rotation={rotation}', throttle_duration_sec=2.0)
 
                                 if tag_id is not None:
                                     # Check if the tag has already been detected
@@ -430,7 +439,7 @@ class AprilTagDetector(Node):
             return False
         
         area = cv2.contourArea(corners.astype(np.float32))
-        if area < 500:
+        if area < 300:
             return False
         
         # Get the lengths of each side of the quadrilateral
@@ -450,7 +459,7 @@ class AprilTagDetector(Node):
         aspect_ratio = max(avg_width, avg_height) / min(avg_width, avg_height)
 
         # Tags should be roughly square
-        if aspect_ratio > 2.0:
+        if aspect_ratio > 3.0:
             return False
         
         return True
