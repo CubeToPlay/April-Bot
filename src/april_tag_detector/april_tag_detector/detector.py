@@ -129,7 +129,7 @@ class AprilTagDetector(Node):
         bits = (grid < 128).astype(int)  # black=1, white=0
         return bits.flatten()
     
-    def match_template(self, bits, match_threshold=14):
+    def match_template(self, bits, match_threshold=10):
         best_match = None
         best_score = -1
         for tag_id, template_bits in self.valid_tag_codes.items():
@@ -250,12 +250,6 @@ class AprilTagDetector(Node):
             if found_id is not None:
                 detected_tags.append({
                     "id": found_id,
-                    "corners": quad,
-                    "center": np.mean(quad, axis=0)
-                })
-            else:
-                detected_tags.append({
-                    "id": -1,
                     "corners": quad,
                     "center": np.mean(quad, axis=0)
                 })
