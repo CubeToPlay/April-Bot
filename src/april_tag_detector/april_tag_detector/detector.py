@@ -129,15 +129,12 @@ class AprilTagDetector(Node):
     def load_tag36h11_codes(self):
         codes = {}
         for tag_id, data in self.tags.items():
-            img = data['image']
-            size = img.shape[0]
-            border = int(size * 0.15)
-            inner = img[border:-border, border:-border]
-            grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
-            bits = (grid > 127).astype(np.uint8)
+            bits = self.extract_bit_grid_from_image(data['image'])
             codes[tag_id] = bits
+            
+            # Debug: print the bit pattern
+            self.get_logger().info(f'Tag {tag_id} bits:\n{bits}')
         
-        self.get_logger().info(f"Loaded {len(codes)} tag codes")
         return codes
     
     def camera_info_callback(self, msg):
@@ -214,6 +211,7 @@ class AprilTagDetector(Node):
         """
         if bits is None or bits.shape != (6,6):
             return None, None
+        self.get_logger().info(f'Detected bits:\n{bits}', throttle_duration_sec=5.0)
 
         def rotate(bits, k):
             return np.rot90(bits, k)
@@ -226,6 +224,7 @@ class AprilTagDetector(Node):
         best_dist = 999
 
         for tag_id, tag_bits in self.valid_tag_codes.items():
+            self.get_logger().info(f'Comparing to Tag {tag_id} bits:\n{tag_bits}', once=True)
             for rot in range(4):
                 rotated = rotate(bits, rot)
                 dist = hamming(rotated, tag_bits)
@@ -282,6 +281,19 @@ class AprilTagDetector(Node):
 
         # partial tags have broken perimeters
         return peri > 0.9 * (4 * warped_bin.shape[0])
+    
+    def extract_bit_grid_from_image(self, img):
+        """Extract 6x6 bit grid from a binary image (works for both templates and warped images)"""
+        size = img.shape[0]
+        border = int(size * 0.15)  # Remove white border
+        inner = img[border:-border, border:-border]
+        
+        # Resize to 6x6 grid
+        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+        
+        # Threshold to get bits
+        bits = (grid > 127).astype(np.uint8)
+        return bits
 
     def extract_bit_grid(self, gray, corners, grid_size=6):
         size = 300
@@ -301,7 +313,7 @@ class AprilTagDetector(Node):
         # if not self.has_strong_cell_contrast(warped_bin):
         #     return None
         # Decode bits
-        bits = self.decode(warped_bin)
+        bits = self.extract_bit_grid_from_image(warped_bin)
         return bits
     
     def detect_apriltags(self, img):
