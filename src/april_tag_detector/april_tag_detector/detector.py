@@ -33,10 +33,10 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
-        self.max_hamming = 0
+        self.max_hamming = 2
 
-        self.min_confirm_time = 0.5  # seconds
-        self.max_center_jump = 30.0  # pixels
+        self.min_confirm_time = 0.2  # seconds
+        self.max_center_jump = 50.0  # pixels
 
         self.tag_tracks = {}  
         # tag_id -> {
@@ -260,14 +260,7 @@ class AprilTagDetector(Node):
         """Combined validation for tag quality"""
         # Check if tag is complete (not cut off by image edge)
         return self.check_tag_completeness(corners, gray_img.shape)
-    
-    def is_strict_black_white(self, img, eps=5):
-        vals = np.unique(img)
-        for v in vals:
-            if not (v < eps or v > 255 - eps):
-                return False
-        return True
-    def has_valid_black_border(self, warped_bin, border_frac=0.12, min_ratio=0.98):
+    def has_valid_black_border(self, warped_bin, border_frac=0.12, min_ratio=0.85):
         h, w = warped_bin.shape
         b = int(min(h, w) * border_frac)
 
@@ -304,18 +297,19 @@ class AprilTagDetector(Node):
             gray, M, (size, size), flags=cv2.INTER_NEAREST
         )
 
-        # HARD REJECT GREY OBJECTS
-        if not self.is_strict_black_white(warped):
-            return None
-
-        # FIXED threshold (NO OTSU)
-        _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
+        _, warped_bin = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY  + cv2.THRESH_OTSU)
         if not self.has_valid_black_border(warped_bin):
+            cv2.imshow("warped", warped)
+            cv2.imshow("warped_bin", warped_bin)
+            cv2.waitKey(1)
             return None
 
-        if not self.border_is_continuous(warped_bin):
-            return None
+        # if not self.border_is_continuous(warped_bin):
+        #     return None
         if not self.has_strong_cell_contrast(warped_bin):
+            cv2.imshow("warped", warped)
+            cv2.imshow("warped_bin", warped_bin)
+            cv2.waitKey(1)
             return None
         # Decode bits STRICTLY
         bits = self.strict_decode(warped_bin)
