@@ -276,7 +276,7 @@ class AprilTagDetector(Node):
 
     def find_apriltags_contours(self, image, warp_size=240):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
+        debug_image = image.copy()
         thresh = cv2.adaptiveThreshold(
             gray, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -291,7 +291,7 @@ class AprilTagDetector(Node):
         detected_tags = []
 
         if hierarchy is None:
-            return detected_tags, None
+            return detected_tags, image
 
         for i, cnt in enumerate(contours):
             area = cv2.contourArea(cnt)
@@ -302,7 +302,6 @@ class AprilTagDetector(Node):
             peri = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
             # DEBUG: draw every quad candidate in BLUE
-            debug_image = image.copy()
             cv2.polylines(
                 debug_image,
                 [approx.astype(int)],
