@@ -118,9 +118,73 @@ class AprilTagDetector(Node):
     def load_tag36h11_codes(self):
         codes = {}
         for tag_id, data in self.tags.items():
-            bits = self.extract_inner_bits(data['image'])
+            img = data["image"]
+
+            if np.mean(img) > 127:
+                img = 255 - img
+
+            bits = self.decode_template(img)
             codes[tag_id] = bits
+
         return codes
+
+    def decode_template(self, img):
+        img = cv2.resize(img, (240, 240))
+        GRID = 6
+        CELL = img.shape[0] // GRID
+
+        bits = np.zeros((GRID, GRID), dtype=int)
+        for y in range(GRID):
+            for x in range(GRID):
+                cell = img[
+                    y*CELL:(y+1)*CELL,
+                    x*CELL:(x+1)*CELL
+                ]
+                bits[y, x] = 1 if np.mean(cell) < 128 else 0
+
+        return bits[1:-1, 1:-1].flatten()
+    
+    def decode_and_match(self, warped):
+        GRID = 6
+        CELL = warped.shape[0] // GRID
+
+        best_id = None
+        best_score = -1
+
+        for rot in range(4):
+            img = np.rot90(warped, rot)
+            bits = np.zeros((GRID, GRID), dtype=int)
+
+            for y in range(GRID):
+                for x in range(GRID):
+                    cell = img[
+                        y*CELL:(y+1)*CELL,
+                        x*CELL:(x+1)*CELL
+                    ]
+                    bits[y, x] = 1 if np.mean(cell) < 128 else 0
+
+            # Border must be black
+            border = np.concatenate([
+                bits[0, :], bits[-1, :],
+                bits[:, 0], bits[:, -1]
+            ])
+            if np.mean(border) < 0.8:
+                continue
+
+            inner = bits[1:-1, 1:-1].flatten()
+
+            for tag_id, template in self.valid_tag_codes.items():
+                score = np.sum(inner == template)
+                if score > best_score:
+                    best_score = score
+                    best_id = tag_id
+
+        if best_score >= (16 - self.max_hamming):
+            return best_id
+
+        return None
+
+
     def extract_inner_bits(self, img, grid_size=4, border_ratio=0.25):
         size = img.shape[0]
         border = int(size * border_ratio)
@@ -256,8 +320,75 @@ class AprilTagDetector(Node):
 
         return detected_tags
 
-    def detect_apriltags(self, img):
-        return self.find_apriltags_contours(img)
+    def detect_apriltags(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Robust threshold
+        thresh = cv2.adaptiveThreshold(
+            gray, 255,
+            cv2.ADAPTIVE_THRESH_MEAN_C,
+            cv2.THRESH_BINARY,
+            31, 5
+        )
+
+        # Normalize polarity
+        if np.mean(thresh) > 127:
+            thresh = 255 - thresh
+
+        contours, hierarchy = cv2.findContours(
+            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        detections = []
+
+        for cnt in contours:
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+
+            if len(approx) != 4 or not cv2.isContourConvex(approx):
+                continue
+
+            quad = approx.reshape(4, 2)
+            quad = self.order_points(quad)
+
+            # Reject small quads
+            if cv2.contourArea(quad.astype(np.int32)) < 500:
+                continue
+
+            # Warp
+            warp_size = 240
+            dst = np.array([
+                [0, 0],
+                [warp_size - 1, 0],
+                [warp_size - 1, warp_size - 1],
+                [0, warp_size - 1]
+            ], dtype=np.float32)
+
+            M = cv2.getPerspectiveTransform(quad.astype(np.float32), dst)
+            warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
+
+            warped = cv2.adaptiveThreshold(
+                warped, 255,
+                cv2.ADAPTIVE_THRESH_MEAN_C,
+                cv2.THRESH_BINARY,
+                31, 5
+            )
+
+            if np.mean(warped) > 127:
+                warped = 255 - warped
+
+            tag_id = self.decode_and_match(warped)
+            if tag_id is None:
+                continue
+
+            detections.append({
+                "id": tag_id,
+                "corners": quad,
+                "center": quad.mean(axis=0)
+            })
+
+        return detections
+
 
     def image_callback(self, msg):
         try:
