@@ -7,6 +7,10 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 
+tag_dir = os.path.join(
+        get_package_share_directory('apriltag_resources'),
+        'models'
+    )
 
 def generate_launch_description():
     # AprilTag Detector Parameters
@@ -36,7 +40,7 @@ def generate_launch_description():
     
     tag_dir_arg = DeclareLaunchArgument(
         'tag_dir',
-        default_value='April-Bot/src/april_bot_world/models/april_tag_models',
+        default_value=tag_dir,
         description='Directory containing AprilTag template images'
     )
 

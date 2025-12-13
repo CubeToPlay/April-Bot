@@ -33,6 +33,8 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
+        self.max_hamming = 2
+
         self.bridge = CvBridge()
 
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -49,6 +51,7 @@ class AprilTagDetector(Node):
 
         if self.tag_dir:
             self.load_tags()
+        self.valid_tag_codes = self.load_tag36h11_codes()
         
         self.image_sub = self.create_subscription(
             Image,
@@ -112,6 +115,25 @@ class AprilTagDetector(Node):
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
 
+    def load_tag36h11_codes(self):
+        codes = {}
+
+        for tag_id, data in self.tags.items():
+            img = data['image']
+
+            # Inner 6x6 grid
+            size = img.shape[0]
+            cell = size // 8
+            inner = img[cell:-cell, cell:-cell]
+
+            grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+            bits = (grid > 127).astype(np.uint8)
+
+            codes[tag_id] = bits
+
+        self.get_logger().info(f"Loaded {len(codes)} tag codes")
+        return codes
+    
     def camera_info_callback(self, msg):
         """Store camera calibration"""
         # This extracts camera info needed for 3D pose estimation
@@ -130,74 +152,13 @@ class AprilTagDetector(Node):
 
     def has_inner_pattern(self, gray_img, corners):
         """Check if the quadrilateral contains an actual AprilTag pattern (black/white tiles)"""
-        size = 300
-        dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype="float32")
-        M = cv2.getPerspectiveTransform(corners, dst)
-        warped = cv2.warpPerspective(gray_img, M, (size, size))
-        
-        # Threshold to binary
-        _, warped_bin = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
-        # Check border (AprilTags have a white border)
-        border_width = int(size / 10)
-        
-        # Sample border regions
-        top_border = warped_bin[0:border_width, :]
-        bottom_border = warped_bin[-border_width:, :]
-        left_border = warped_bin[:, 0:border_width]
-        right_border = warped_bin[:, -border_width:]
-        
-        # Border should be predominantly white (>70% white pixels)
-        border_pixels = np.concatenate([
-            top_border.flatten(),
-            bottom_border.flatten(),
-            left_border.flatten(),
-            right_border.flatten()
-        ])
-        white_ratio = np.sum(border_pixels == 255) / len(border_pixels)
-        
-        if white_ratio < 0.70:
-            return False
-        
-        # Check inner region has pattern variation (not uniform)
-        inner = warped_bin[border_width:-border_width, border_width:-border_width]
-        
-        # Calculate variance - tags should have high variance (black AND white tiles)
-        black_pixels = np.sum(inner == 0)
-        white_pixels = np.sum(inner == 255)
-        total_pixels = inner.size
-        
-        black_ratio = black_pixels / total_pixels
-        white_ratio = white_pixels / total_pixels
-        
-        # Tag should have both black and white regions (not uniform)
-        # Typical AprilTag has 20-50% black pixels in inner region
-        if black_ratio < 0.15 or black_ratio > 0.60:
-            return False
-        
-        # Check for tile-like structure (not just noise)
-        # Divide inner region into grid and check for consistency
-        grid_size = 6  # AprilTag 36h11 has 6x6 inner grid
-        tile_height = inner.shape[0] // grid_size
-        tile_width = inner.shape[1] // grid_size
-        
-        consistent_tiles = 0
-        for i in range(grid_size):
-            for j in range(grid_size):
-                tile = inner[i*tile_height:(i+1)*tile_height, 
-                            j*tile_width:(j+1)*tile_width]
-                
-                # Each tile should be predominantly one color (>80%)
-                tile_white = np.sum(tile == 255) / tile.size
-                if tile_white > 0.80 or tile_white < 0.20:
-                    consistent_tiles += 1
-        
-        # At least 70% of tiles should be consistent
-        if consistent_tiles < (grid_size * grid_size * 0.70):
-            return False
-        
-        return True
+        bits = self.extract_bit_grid(gray_img, corners)
 
+        if bits.min() == bits.max():
+            return False
+        return self.match_known_apriltag(bits)
+
+    
     def check_tag_completeness(self, corners, img_shape):
         """Check if all 4 corners are well within the image bounds"""
         margin = 20  # pixels from edge
@@ -211,6 +172,40 @@ class AprilTagDetector(Node):
                 return False
         
         return True
+    
+    def matches_known_apriltag(self, bits):
+        """
+        bits: 6x6 numpy array of {0,1}
+        Returns (tag_id, rotation) or (None, None)
+        """
+
+        def rotate(bits, k):
+            return np.rot90(bits, k)
+
+        def hamming(a, b):
+            return np.count_nonzero(a != b)
+
+        best_id = None
+        best_rot = None
+        best_dist = 999
+
+        for tag_id, tag_bits in self.valid_tag_codes.items():
+            for rot in range(4):
+                rotated = rotate(bits, rot)
+                dist = hamming(rotated, tag_bits)
+
+                if dist < best_dist:
+                    best_dist = dist
+                    best_id = tag_id
+                    best_rot = rot
+
+                    if dist == 0:
+                        return best_id, best_rot  # exact match
+
+        if best_dist <= self.max_hamming:
+            return best_id, best_rot
+
+        return None, None
 
     def validate_tag_quality(self, gray_img, corners):
         """Combined validation for tag quality"""
@@ -223,6 +218,27 @@ class AprilTagDetector(Node):
             return False
         
         return True
+    def extract_bit_grid(self, gray, corners, grid_size=6):
+        size = 300
+        dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype=np.float32)
+        M = cv2.getPerspectiveTransform(corners, dst)
+
+        warped = cv2.warpPerspective(
+            gray, M, (size, size), flags=cv2.INTER_NEAREST
+        )
+
+        # Crop border (1-cell border for AprilTag)
+        cell = size // (grid_size + 2)
+        inner = warped[cell:-cell, cell:-cell]
+
+        # Downsample to grid_size x grid_size
+        grid = cv2.resize(inner, (grid_size, grid_size), interpolation=cv2.INTER_AREA)
+
+        # Convert to bits by relative intensity
+        mean = np.mean(grid)
+        bits = (grid > mean).astype(np.uint8)
+
+        return bits
     
     def detect_apriltags(self, img):
         """Detects all AprilTags in the given image, using two methods in order to detect corners of AprilTags"""
@@ -294,7 +310,11 @@ class AprilTagDetector(Node):
                                 if not self.validate_tag_quality(gray, ordered_corners):
                                     continue
                                 # Match against tag images
-                                tag_id, rotation = self.match_image(gray, ordered_corners)
+                                bits = self.extract_bit_grid(gray, ordered_corners)
+                                tag_id, rotation = self.matches_known_apriltag(bits)
+
+                                if tag_id is None:
+                                    continue
 
                                 if tag_id is not None:
                                     # Check if the tag has already been detected
@@ -384,85 +404,85 @@ class AprilTagDetector(Node):
         
         return rect
     
-    def match_image(self, gray_img, corners):
-        """Match warped tag with given tag images"""
+    # def match_image(self, gray_img, corners):
+    #     """Match warped tag with given tag images"""
 
-        if not self.tags:
-            return self.decode_tag(gray_img, corners), 0
+    #     if not self.tags:
+    #         return self.decode_tag(gray_img, corners), 0
         
-        size = 300
-        dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype="float32")
-        M = cv2.getPerspectiveTransform(corners, dst)
-        warped = cv2.warpPerspective(gray_img, M, (size, size))
+    #     size = 300
+    #     dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype="float32")
+    #     M = cv2.getPerspectiveTransform(corners, dst)
+    #     warped = cv2.warpPerspective(gray_img, M, (size, size))
         
-        # Threshold
-        _, warped_bin = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    #     # Threshold
+    #     _, warped_bin = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
-        # Try to match against all images and rotations
-        best_match_score = -1
-        best_tag_id = None
-        best_rotation = 0
+    #     # Try to match against all images and rotations
+    #     best_match_score = -1
+    #     best_tag_id = None
+    #     best_rotation = 0
 
-        for tag_id, image_data in self.tags.items():
-            for rot_idx, rotated_template in enumerate(image_data['rotations']):
-                score = self.compare_images(warped_bin, rotated_template)
+    #     for tag_id, image_data in self.tags.items():
+    #         for rot_idx, rotated_template in enumerate(image_data['rotations']):
+    #             score = self.compare_images(warped_bin, rotated_template)
 
-                if score > best_match_score:
-                    best_match_score = score
-                    best_tag_id = tag_id
-                    best_rotation = rot_idx
+    #             if score > best_match_score:
+    #                 best_match_score = score
+    #                 best_tag_id = tag_id
+    #                 best_rotation = rot_idx
         
-        # Threshold for accepting a match
-        if best_match_score > 0.7:
-            return best_tag_id, best_rotation
+    #     # Threshold for accepting a match
+    #     if best_match_score > 0.7:
+    #         return best_tag_id, best_rotation
         
-        return None, None
+    #     return None, None
     
-    def compare_images(self, img1, img2):
-        """Determine how similar two images are to one another"""
-        if img1.shape != img2.shape:
-            return 0.0
+    # def compare_images(self, img1, img2):
+    #     """Determine how similar two images are to one another"""
+    #     if img1.shape != img2.shape:
+    #         return 0.0
         
-        diff = cv2.bitwise_xor(img1, img2)
+    #     diff = cv2.bitwise_xor(img1, img2)
 
-        total_pixels = img1.shape[0] * img1.shape[1]
-        different_pixels = np.count_nonzero(diff)
-        similarity = 1.0 - (different_pixels / total_pixels)
+    #     total_pixels = img1.shape[0] * img1.shape[1]
+    #     different_pixels = np.count_nonzero(diff)
+    #     similarity = 1.0 - (different_pixels / total_pixels)
         
-        return similarity
+    #     return similarity
     
-    def decode_tag(self, gray_img, corners):
-        """Backup decode incase a given AprilTag does not match any given AprilTag values"""
-        size = 300
-        dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype="float32")
+    # def decode_tag(self, gray_img, corners):
+    #     """Backup decode incase a given AprilTag does not match any given AprilTag values"""
+    #     size = 300
+    #     dst = np.array([[0, 0], [size, 0], [size, size], [0, size]], dtype="float32")
         
-        M = cv2.getPerspectiveTransform(corners, dst)
-        warped = cv2.warpPerspective(gray_img, M, (size, size))
+    #     M = cv2.getPerspectiveTransform(corners, dst)
+    #     warped = cv2.warpPerspective(gray_img, M, (size, size))
 
-        _, tag_bin = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    #     _, tag_bin = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
-        # Extract inner grid (remove border)
-        inner = tag_bin[int(size/7):int(6*size/7), int(size/7):int(6*size/7)]
+    #     # Extract inner grid (remove border)
+    #     inner = tag_bin[int(size/7):int(6*size/7), int(size/7):int(6*size/7)]
         
-        # Resize to 8x8 grid
-        grid = cv2.resize(inner, (8, 8), interpolation=cv2.INTER_AREA)
-        _, grid_bin = cv2.threshold(grid, 127, 255, cv2.THRESH_BINARY)
+    #     # Resize to 8x8 grid
+    #     grid = cv2.resize(inner, (8, 8), interpolation=cv2.INTER_AREA)
+    #     _, grid_bin = cv2.threshold(grid, 127, 255, cv2.THRESH_BINARY)
         
-        # Decode ID from inner 6x6 grid
-        inner_grid = grid_bin[1:7, 1:7]
-        bits = (inner_grid > 127).flatten()
+    #     # Decode ID from inner 6x6 grid
+    #     inner_grid = grid_bin[1:7, 1:7]
+    #     bits = (inner_grid > 127).flatten()
         
-        # Simple validation
-        if bits.sum() < 5 or bits.sum() > 30:
-            return None
+    #     # Simple validation
+    #     if bits.sum() < 5 or bits.sum() > 30:
+    #         return None
         
-        # Convert to ID (using first 16 bits)
-        tag_id = 0
-        for i in range(min(16, len(bits))):
-            if bits[i]:
-                tag_id |= (1 << i)
+    #     # Convert to ID (using first 16 bits)
+    #     tag_id = 0
+    #     for i in range(min(16, len(bits))):
+    #         if bits[i]:
+    #             tag_id |= (1 << i)
         
-        return tag_id % 10
+    #     return tag_id % 10
     
     def estimate_pose_pnp(self, corners):
         """Estimate 3D pose using PnP"""
