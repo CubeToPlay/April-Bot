@@ -391,7 +391,7 @@ class AprilTagDetector(Node):
         # Combine all corners and use that combination to find quadrilaterals from the corners, which find the detected tags
         all_corners = np.vstack([corners_detected, harris_corners])
 
-        detected_tags = self.find_quadrilaterals_from_corners(gray, all_corners)
+        detected_tags = self.find_apriltags_contours(img)
         
         return detected_tags
     
@@ -489,28 +489,62 @@ class AprilTagDetector(Node):
     
     def order_points(self, pts):
         """Order corner points: top-left, top-right, bottom-right, bottom-left"""
-        pts = pts.reshape(4, 2)
-        rect = np.zeros((4, 2), dtype="float32")
-        
+        rect = np.zeros((4,2), dtype="float32")
         s = pts.sum(axis=1)
-        rect[0] = pts[np.argmin(s)]  # Top-left
-        rect[2] = pts[np.argmax(s)]  # Bottom-right
-        
         diff = np.diff(pts, axis=1)
-        rect[1] = pts[np.argmin(diff)]  # Top-right
-        rect[3] = pts[np.argmax(diff)]  # Bottom-left
-        
+        rect[0] = pts[np.argmin(s)]      # top-left
+        rect[2] = pts[np.argmax(s)]      # bottom-right
+        rect[1] = pts[np.argmin(diff)]   # top-right
+        rect[3] = pts[np.argmax(diff)]   # bottom-left
         return rect
-    def decode(self, warped_bin):
-        size = warped_bin.shape[0]
-        border = size // 7
+    def decode(self, warped, tag_size=6):
+        """
+        Decode a tag from its warped square image.
+        Returns a binary array representing the tag ID.
+        """
+        bits = np.zeros((tag_size, tag_size), dtype=int)
+        cell_size = warped.shape[0] // tag_size
+        for i in range(tag_size):
+            for j in range(tag_size):
+                cell = warped[i*cell_size:(i+1)*cell_size, j*cell_size:(j+1)*cell_size]
+                bits[i, j] = 1 if np.mean(cell) < 128 else 0  # black=1, white=0
+        return bits[1:-1, 1:-1].flatten()
+    
+    def find_apriltags_contours(self, image, min_size=20, tag_size=6):
+        """
+        Detect AprilTags in an image using contours.
+        Returns a list of dicts: {'id': tag_bits, 'corners': quad}
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (5,5), 0)
+        _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-        inner = warped_bin[border:-border, border:-border]
-        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        detected_tags = []
 
-        bits = (grid > 127).astype(np.uint8)
+        for cnt in contours:
+            epsilon = 0.05 * cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, epsilon, True)
 
-        return bits
+            if len(approx) == 4 and cv2.isContourConvex(approx):
+                quad = approx.reshape(4,2)
+                w = np.linalg.norm(quad[0] - quad[1])
+                h = np.linalg.norm(quad[0] - quad[3])
+                if w < min_size or h < min_size:
+                    continue
+
+                quad = self.order_points(quad)
+                dst = np.array([[0,0],[tag_size*10-1,0],[tag_size*10-1,tag_size*10-1],[0,tag_size*10-1]], dtype="float32")
+                M = cv2.getPerspectiveTransform(quad, dst)
+                warped = cv2.warpPerspective(gray, M, (tag_size*10, tag_size*10))
+                tag_id = self.decode(warped, tag_size)
+
+                detected_tags.append({
+                    'id': tag_id,
+                    'corners': quad
+                })
+
+        return detected_tags
     
     # def match_image(self, gray_img, corners):
     #     """Match warped tag with given tag images"""
