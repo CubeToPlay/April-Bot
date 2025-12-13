@@ -121,7 +121,7 @@ class AprilTagDetector(Node):
             bits = self.extract_inner_bits(data['image'])
             codes[tag_id] = bits
         return codes
-    def extract_inner_bits(img):
+    def extract_inner_bits(self, img):
         size = img.shape[0]
         border = int(size * 0.25)  # 25% border
         inner = img[border:-border, border:-border]
