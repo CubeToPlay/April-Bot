@@ -136,15 +136,6 @@ class AprilTagDetector(Node):
             for x in range(GRID):
                 cell = img[y*CELL:(y+1)*CELL, x*CELL:(x+1)*CELL]
                 bits[y, x] = 1 if np.mean(cell) < 128 else 0
-
-        # border must be black
-        border = np.concatenate([
-            bits[0, :], bits[-1, :],
-            bits[:, 0], bits[:, -1]
-        ])
-        if np.any(border == 0):
-            self.get_logger().warn("Template border not black after cropping!")
-
         return bits[1:-1, 1:-1].flatten()
     
     def draw_grid(self, img, grid=6):
@@ -157,36 +148,26 @@ class AprilTagDetector(Node):
         return out
     
     def decode_quad(self, warped):
-        if np.mean(warped) > 127:
-            warped = 255 - warped
-        cv2.imshow("Warped quad", self.draw_grid(warped))
-        cv2.waitKey(1)
         GRID = 6
         CELL = warped.shape[0] // GRID
 
         best_id = None
         best_score = -1
+        bits = np.zeros((GRID, GRID), dtype=np.uint8)
+
+        for y in range(GRID):
+            for x in range(GRID):
+                cell = warped[y*CELL:(y+1)*CELL, x*CELL:(x+1)*CELL]
+                bits[y, x] = 1 if np.mean(cell) < 128 else 0
+         # Normalize polarity
+        if bits[0, 0] == 0:
+            bits = 1 - bits
+        cv2.imshow("Warped quad", self.draw_grid(warped))
+        cv2.waitKey(1)
 
         for rot in range(4):
-            img = np.rot90(warped, rot)
-            bits = np.zeros((GRID, GRID), dtype=np.uint8)
-
-            for y in range(GRID):
-                for x in range(GRID):
-                    cell = img[y*CELL:(y+1)*CELL, x*CELL:(x+1)*CELL]
-                    bits[y, x] = 1 if np.mean(cell) < 128 else 0
-
-            border = np.concatenate([
-                bits[0, :], bits[-1, :],
-                bits[:, 0], bits[:, -1]
-            ])
-            print("BITS:\n", bits)
-            print("BORDER:", border.mean())
-
-            if np.mean(border) < 0.75:
-                continue
-
-            inner = bits[1:-1, 1:-1].flatten()
+            rotated_bits = np.rot90(bits, rot)
+            inner = rotated_bits[1:-1, 1:-1].flatten()
 
             for tag_id, template in self.valid_tag_codes.items():
                 score = np.sum(inner == template)
@@ -202,15 +183,7 @@ class AprilTagDetector(Node):
     def load_tag36h11_codes(self):
         codes = {}
         for tag_id, img in self.tags.items():
-            bits = self.decode_template(img)
-            codes[tag_id] = bits
-
-            if np.mean(img) > 127:
-                img = 255 - img
-
-            bits = self.decode_template(img)
-            codes[tag_id] = bits
-
+            codes[tag_id] =  self.decode_template(img)
         return codes
     
     def camera_info_callback(self, msg):
@@ -241,6 +214,36 @@ class AprilTagDetector(Node):
         rect[1] = pts[np.argmin(diff)]
         rect[3] = pts[np.argmax(diff)]
         return rect
+    
+    def extract_bits(self, warped):
+        GRID = 6
+        CELL = warped.shape[0] // GRID
+        bits = np.zeros((GRID, GRID), dtype=np.uint8)
+
+        for y in range(GRID):
+            for x in range(GRID):
+                cell = warped[
+                    y*CELL:(y+1)*CELL,
+                    x*CELL:(x+1)*CELL
+                ]
+                bits[y, x] = 1 if np.mean(cell) < 128 else 0
+        return bits
+    
+    def match_bits(self, payload):
+        best_id = None
+        best_score = 0
+
+        for tag_id, template in self.valid_tag_codes.items():
+            for rot in range(4):
+                rotated = np.rot90(template.reshape(4,4), rot).flatten()
+                score = np.sum(payload == rotated)
+                if score > best_score:
+                    best_score = score
+                    best_id = tag_id
+
+        if best_score >= 16 - self.max_hamming:
+            return best_id
+        return None
 
     def extract_bit_grid_from_image(self, img):
         size = img.shape[0]
@@ -249,24 +252,6 @@ class AprilTagDetector(Node):
         grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
         bits = (grid > 127).astype(np.uint8)
         return bits
-
-    def decode(self, warped, tag_size=6):
-        bits = np.zeros((tag_size, tag_size), dtype=int)
-        cell_size = warped.shape[0] // tag_size
-        for i in range(tag_size):
-            for j in range(tag_size):
-                cell = warped[i*cell_size:(i+1)*cell_size, j*cell_size:(j+1)*cell_size]
-                bits[i, j] = 1 if np.mean(cell) < 128 else 0
-
-        # Inner 4x4 grid (skip border)
-        inner_bits = bits[1:-1, 1:-1].flatten()
-        
-        # Convert 16 bits to integer
-        tag_id = 0
-        for i, b in enumerate(inner_bits):
-            if b:
-                tag_id |= (1 << i)
-        return int(tag_id)
     
     def match_tag_bits(self, bits):
         for tag_id, template_bits in self.valid_tag_codes.items():
