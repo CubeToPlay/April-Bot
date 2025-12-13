@@ -263,64 +263,80 @@ class AprilTagDetector(Node):
                 return tag_id
         return None
 
-    def find_apriltags_contours(self, image, min_size=10, tag_size=6, warp_size=200):
+    def find_apriltags_contours(self, image, warp_size=240):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                               cv2.THRESH_BINARY, 11, 2)
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+        thresh = cv2.adaptiveThreshold(
+            gray, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11, 2
+        )
+
+        contours, hierarchy = cv2.findContours(
+            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         detected_tags = []
+
+        if hierarchy is None:
+            return detected_tags
+
         for i, cnt in enumerate(contours):
-            # must have parent (white background)
-            # if hierarchy[0][i][3] == -1:
-            #     continue
             area = cv2.contourArea(cnt)
             if area < 800:
                 continue
-            epsilon = 0.05 * cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, epsilon, True)
+
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+
             if len(approx) != 4 or not cv2.isContourConvex(approx):
                 continue
 
-            quad = approx.reshape(4,2)
-            w = np.linalg.norm(quad[0]-quad[1])
-            h = np.linalg.norm(quad[0]-quad[3])
+            # Must have a parent OR child → nested contour
+            parent = hierarchy[0][i][3]
+            child  = hierarchy[0][i][2]
+            if parent == -1 and child == -1:
+                continue
+
+            quad = self.order_points(approx.reshape(4, 2))
+
+            # Square-ish
+            w = np.linalg.norm(quad[0] - quad[1])
+            h = np.linalg.norm(quad[0] - quad[3])
             if not 0.7 < w / h < 1.3:
                 continue
 
-            quad = self.order_points(quad)
+            # Warp
             dst = np.array([
-                [0,0],
-                [warp_size-1,0],
-                [warp_size-1,warp_size-1],
-                [0,warp_size-1]
+                [0, 0],
+                [warp_size - 1, 0],
+                [warp_size - 1, warp_size - 1],
+                [0, warp_size - 1]
             ], dtype=np.float32)
-            M = cv2.getPerspectiveTransform(quad, dst)
+
+            M = cv2.getPerspectiveTransform(quad.astype(np.float32), dst)
             warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
+
             warped = cv2.adaptiveThreshold(
-                warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY, 11, 2
+                warped, 255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY,
+                11, 2
             )
 
-            # Check all 4 rotations for possible orientation
-            found_id = None
-            for rot in range(4):
-                rotated = np.rot90(warped, k=rot)
-                tag_id = self.decode_quad(rotated)
-                if tag_id is None:
-                    continue
-                found_id = tag_id
-                break
+            tag_id = self.decode_quad(warped)
+            if tag_id is None:
+                continue
 
-            if found_id is not None:
-                detected_tags.append({
-                    "id": found_id,
-                    "corners": quad,
-                    "center": np.mean(quad, axis=0)
-                })
+            detected_tags.append({
+                "id": tag_id,
+                "corners": quad,
+                "center": quad.mean(axis=0)
+            })
 
         return detected_tags
+
 
     def detect_apriltags(self, image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
