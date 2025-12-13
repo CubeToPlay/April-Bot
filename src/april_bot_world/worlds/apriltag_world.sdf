@@ -87,7 +87,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_0.dae</uri>
+              <uri>apriltag_id_0.dae</uri>
               <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
@@ -95,7 +95,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_0.dae</uri>
+              <uri>apriltag_id_0.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -123,7 +123,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_1.dae</uri>
+              <uri>apriltag_id_1.dae</uri>
               <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
@@ -131,7 +131,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_1.dae</uri>
+              <uri>apriltag_id_1.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -159,7 +159,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_2.dae</uri>
+              <uri>apriltag_id_2.dae</uri>
               <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
@@ -167,7 +167,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_2.dae</uri>
+              <uri>apriltag_id_2.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -195,7 +195,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_3.dae</uri>
+              <uri>apriltag_id_3.dae</uri>
               <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
@@ -203,7 +203,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_3.dae</uri>
+              <uri>apriltag_id_3.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -231,7 +231,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_4.dae</uri>
+              <uri>apriltag_id_4.dae</uri>
               <scale>0.5 0.5 0.5 </scale>
             </mesh>
           </geometry>
@@ -239,7 +239,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://apriltag_resources/apriltag_id_4.dae</uri>
+              <uri>apriltag_id_4.dae</uri>
             </mesh>
           </geometry>
         </collision>

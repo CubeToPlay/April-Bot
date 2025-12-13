@@ -28,12 +28,15 @@ def generate_launch_description():
     )
     return LaunchDescription([
         SetEnvironmentVariable(
-            name='GZ_SIM_MODEL_PATH',
-            value=apriltag_resources_path
-        ),
-        SetEnvironmentVariable(
-            'GZ_SIM_RESOURCE_PATH',
-            PathJoinSubstitution([pkg_path, 'models'])
+            name='GZ_SIM_RESOURCE_PATH',
+            value=(
+                os.environ.get('GZ_SIM_RESOURCE_PATH', '') +
+                ':' +
+                os.path.join(
+                    get_package_share_directory('apriltag_resources'),
+                    'models'
+                )
+            )
         ),
         
         SetEnvironmentVariable(
