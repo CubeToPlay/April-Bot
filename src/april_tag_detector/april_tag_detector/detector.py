@@ -399,70 +399,32 @@ class AprilTagDetector(Node):
         """Find quadrilaterals by grouping nearby corners"""
         detected_tags = []
 
-        # Tries different window sizes in order to detect tags at different distances (small windows: far away tags, large windows: close tags)
-        for window_size in [50, 80, 120, 160, 200]:
-            # Grid-based clustering: Divides images into overlapping grid regions, where each region is checked for corner clusters
-            grid_x = np.arange(0, gray.shape[1], window_size)
-            grid_y = np.arange(0, gray.shape[0], window_size)
-            
+        # Threshold image
+        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-            # For each grid cell, it finds all corners in the window and if more than 4 corners are found, select_quadrilateral_corners is called to form a 4-sided shape, which is validated with validate_quadrilateral.
-            # The corners are consistently ordered with order_points
-            # The images are matched against the images given in self.tags using match_image 
-            for x in grid_x:
-                for y in grid_y:
-                    # Find corners in this region
-                    mask_x = (corners[:, 0] >= x) & (corners[:, 0] < x + window_size)
-                    mask_y = (corners[:, 1] >= y) & (corners[:, 1] < y + window_size)
-                    region_corners = corners[mask_x & mask_y]
-                    self.get_logger().info(f'Checking window at ({x},{y}), found {len(region_corners)} corners', 
-                       throttle_duration_sec=5.0)
+        # Find contours
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                    if len(region_corners) >= 4:
-                        # Take the 4 most extreme corners
-                        quad_corners = self.select_quadrilateral_corners(region_corners)
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < 300:  # Skip small contours
+                continue
 
-                        if quad_corners is not None:
-                            cv2.polylines(gray, [quad_corners.astype(int)], True, (255,0,0), 2)
-                            self.get_logger().info('Found a quadrilateral!', throttle_duration_sec=2.0)
-                            # Verify this looks like a tag
-                            if self.validate_quadrilateral(quad_corners):
-                                # Order corners
-                                ordered_corners = self.order_points(quad_corners)
-                                
-                                # if not self.validate_tag_quality(gray, ordered_corners):
-                                #     continue
-                                # Match against tag images
-                                bits = self.extract_bit_grid(gray, ordered_corners)
-                                if bits is None:
-                                    self.get_logger().warn('Bit extraction failed!', throttle_duration_sec=2.0)
-                                    continue
-                                else:
-                                    self.get_logger().info(f'Extracted bits successfully', throttle_duration_sec=2.0)
-                                tag_id, rotation = self.matches_known_apriltag(bits)
+            # Approximate polygon
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
 
-                                if tag_id is None:
-                                    continue
-                                self.get_logger().info(f'Match result: ID={tag_id}, rotation={rotation}', throttle_duration_sec=2.0)
+            if len(approx) == 4:
+                quad = approx.reshape(4, 2).astype(np.float32)
+                # Check aspect ratio
+                width = np.linalg.norm(quad[0] - quad[1])
+                height = np.linalg.norm(quad[0] - quad[3])
+                aspect_ratio = max(width, height) / min(width, height)
+                if aspect_ratio > 3.0:
+                    continue
 
-                                if tag_id is not None:
-                                    # Check if the tag has already been detected
-                                    is_duplicate = False
-                                    for existing_tag in detected_tags:
-                                        center_dist = np.linalg.norm(
-                                            np.mean(ordered_corners, axis=0) - 
-                                            existing_tag['center']
-                                        )
-                                        if center_dist < 20:  # pixels
-                                            is_duplicate = True
-                                            break
-                                    if not is_duplicate:
-                                        detected_tags.append({
-                                            'id': tag_id,
-                                            'corners': ordered_corners,
-                                            'center': np.mean(ordered_corners, axis=0),
-                                            'rotation': rotation
-                                        })
+                detected_tags.append({'corners': quad, 'center': np.mean(quad, axis=0)})
+
         return detected_tags
     
     def select_quadrilateral_corners(self, corners):
