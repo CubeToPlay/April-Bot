@@ -423,7 +423,22 @@ class AprilTagDetector(Node):
                 if aspect_ratio > 3.0:
                     continue
 
-                detected_tags.append({'corners': quad, 'center': np.mean(quad, axis=0)})
+                bits = self.extract_bit_grid(gray, corners)
+                if bits is None:
+                    self.get_logger().warn('Bit extraction failed!', throttle_duration_sec=2.0)
+                    continue  # skip this quad entirely
+
+                tag_id, rotation = self.matches_known_apriltag(bits)
+                if tag_id is None:
+                    continue  # skip unrecognized tag
+
+                # Now safe to append
+                detected_tags.append({
+                    'id': tag_id,
+                    'corners': corners,
+                    'center': np.mean(corners, axis=0),
+                    'rotation': rotation
+                })
 
         return detected_tags
     
