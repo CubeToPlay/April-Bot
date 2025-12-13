@@ -203,7 +203,7 @@ class AprilTagDetector(Node):
     def validate_tag_quality(self, gray_img, corners):
         """Combined validation for tag quality"""
         # Check if tag is complete (not cut off by image edge)
-        return self.check_tag_completeness(corners, gray_img.shape):
+        return self.check_tag_completeness(corners, gray_img.shape)
     
     def is_strict_black_white(self, img, eps=5):
         vals = np.unique(img)
