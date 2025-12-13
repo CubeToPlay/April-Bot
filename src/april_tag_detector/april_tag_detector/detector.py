@@ -203,7 +203,7 @@ class AprilTagDetector(Node):
                 return tag_id
         return None
 
-    def find_apriltags_contours(self, image, min_size=20, tag_size=6, warp_size=200):
+    def find_apriltags_contours(self, image, min_size=10, tag_size=6, warp_size=200):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                cv2.THRESH_BINARY, 11, 2)
