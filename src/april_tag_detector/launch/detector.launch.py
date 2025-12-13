@@ -26,7 +26,9 @@ def generate_launch_description():
                 'size': 0.16,  # meters (match your tag_size)
                 'max_hamming': 2,
                 'publish_tf': True,
-                'camera_frame': 'camera_link'
+                'camera_frame': 'camera_link',
+                'approximate_sync': True,
+                'queue_size': 10
             }],
             remappings=[
                 ('image_rect', '/camera/image_raw'),
