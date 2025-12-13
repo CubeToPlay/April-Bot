@@ -129,7 +129,7 @@ class AprilTagDetector(Node):
         bits = (grid < 128).astype(int)  # black=1, white=0
         return bits.flatten()
     
-    def match_template(self, bits, match_threshold=10):
+    def match_template(self, bits, match_threshold=12):
         best_match = None
         best_score = -1
         for tag_id, template_bits in self.valid_tag_codes.items():
