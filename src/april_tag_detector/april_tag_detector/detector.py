@@ -104,7 +104,6 @@ class AprilTagDetector(Node):
     
     def verify_templates(self, output_dir='/tmp/tag_verification'):
         """Save visualizations of loaded templates for verification"""
-        import os
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         
@@ -114,27 +113,34 @@ class AprilTagDetector(Node):
             # Create a visualization with grid
             grid_img = self.draw_grid(img, grid=6)
             grid_filename = os.path.join(output_dir, f'tag_{tag_id}_grid.png')
-            cv2.imshow(grid_filename, grid_img)
+            cv2.imwrite(grid_filename, grid_img)
             
-            # Decode and visualize bits
-            bits = self.decode_template(img)
-            bits_2d = bits.reshape(4, 4)
+            # Decode and visualize bits (6x6 now)
+            bits = self.valid_tag_codes[tag_id]
+            bits_2d = bits.reshape(6, 6)  # Changed from 4,4
             
             # Create a larger visualization of the bit pattern
-            bit_vis = np.zeros((200, 200), dtype=np.uint8)
-            cell_size = 50
-            for y in range(4):
-                for x in range(4):
-                    color = 255 if bits_2d[y, x] == 0 else 0
+            bit_vis = np.zeros((600, 600), dtype=np.uint8)
+            cell_size = 100
+            for y in range(6):  # Changed from 4
+                for x in range(6):  # Changed from 4
+                    color = 0 if bits_2d[y, x] == 1 else 255  # Black for 1
                     bit_vis[y*cell_size:(y+1)*cell_size, 
                             x*cell_size:(x+1)*cell_size] = color
+                    
+                    # Add text showing bit value
+                    text_color = 255 if bits_2d[y, x] == 1 else 0
+                    cv2.putText(bit_vis, str(bits_2d[y, x]),
+                            (x*cell_size + 35, y*cell_size + 60),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, text_color, 2)
             
             bit_filename = os.path.join(output_dir, f'tag_{tag_id}_bits.png')
-            cv2.imshow(bit_filename, bit_vis)
+            cv2.imwrite(bit_filename, bit_vis)
             
-            self.get_logger().info(f'Tag {tag_id}: bits = {bits}')
+            self.get_logger().info(f'Tag {tag_id} 6x6 bits:\n{bits_2d}')
         
         self.get_logger().info(f'Verification images saved to: {output_dir}')
+    
     def load_tags(self):
         """Load AprilTag images from directory"""
         if not os.path.exists(self.tag_dir):
@@ -188,37 +194,49 @@ class AprilTagDetector(Node):
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     def decode_template(self, img):
-        border_size = 240 // 8  # 30 pixels
-    
-        # Extract just the 6x6 data region (180x180 pixels)
-        data_region = img[border_size:-border_size, border_size:-border_size]
+        """Decode a template image into a 36-bit code (full 6x6)"""
         
-        # Now divide this 180x180 region into 6x6 cells (30x30 each)
+        # The 240x240 image should contain the full AprilTag structure
+        # Standard AprilTag36h11: outer white border, then 6x6 data grid
+        
+        # Find where the actual tag starts (skip outer white border if present)
+        h, w = img.shape
+        
+        # Check if there's a white border by sampling edges
+        top_edge = np.mean(img[0:10, :])
+        left_edge = np.mean(img[:, 0:10])
+        
+        if top_edge > 200 and left_edge > 200:
+            # Has white border, crop it
+            border = h // 10  # Estimate ~10% border
+            img = img[border:-border, border:-border]
+        
+        # Now we should have just the 6x6 tag data
+        # Resize to ensure consistent cell size
+        img = cv2.resize(img, (240, 240), interpolation=cv2.INTER_AREA)
+        
         GRID = 6
-        CELL = data_region.shape[0] // GRID  # Should be 30
+        CELL = img.shape[0] // GRID  # 40 pixels per cell
         
         bits = np.zeros((GRID, GRID), dtype=np.uint8)
         
+        self.get_logger().info(f"\nDecoding template - cell size: {CELL}x{CELL}")
+        
         for y in range(GRID):
             for x in range(GRID):
-                # Extract cell with small margin to avoid edge effects
-                margin = 4
-                cell = data_region[
-                    y*CELL + margin:(y+1)*CELL - margin,
-                    x*CELL + margin:(x+1)*CELL - margin
-                ]
+                # Sample from center of cell
+                margin = CELL // 4
+                cell = img[y*CELL + margin:(y+1)*CELL - margin,
+                        x*CELL + margin:(x+1)*CELL - margin]
                 
-                # Black = 1, White = 0
                 mean_val = np.mean(cell)
-                bits[y, x] = 0 if mean_val > 127 else 1
+                # Black = 1, White = 0
+                bits[y, x] = 1 if mean_val < 128 else 0
         
         self.get_logger().info(f"Template 6x6 bits:\n{bits}")
         
-        # The INNER 4x4 is the actual tag ID
-        inner_bits = bits[1:-1, 1:-1].flatten()
-        self.get_logger().info(f"Template inner 4x4:\n{inner_bits.reshape(4,4)}")
-        
-        return inner_bits
+        # Return the FULL 6x6 as a flat array (36 bits)
+        return bits.flatten()
     
     def draw_grid(self, img, grid=6):
         h = img.shape[0]
@@ -230,57 +248,83 @@ class AprilTagDetector(Node):
         return out
     
     def decode_quad(self, warped):
+        """Decode a warped quad from camera - full 6x6 grid"""
         GRID = 6
-        CELL = warped.shape[0] // GRID
+        CELL = warped.shape[0] // GRID  # Should be 40 if warped is 240x240
 
         best_id = None
         best_score = -1
+        best_rotation = -1
+        
         bits = np.zeros((GRID, GRID), dtype=np.uint8)
 
+        # Extract bits from the full 6x6 grid
+        margin = 5  # Small margin to avoid edge effects
         for y in range(GRID):
             for x in range(GRID):
-                cell = warped[y*CELL:(y+1)*CELL, x*CELL:(x+1)*CELL]
-                bits[y, x] = 1 if np.mean(cell) < 128 else 0
-         # Normalize polarity
+                y_start = y * CELL + margin
+                y_end = (y + 1) * CELL - margin
+                x_start = x * CELL + margin
+                x_end = (x + 1) * CELL - margin
+                
+                cell = warped[max(0, y_start):min(warped.shape[0], y_end),
+                            max(0, x_start):min(warped.shape[1], x_end)]
+                
+                # Use median for robustness
+                bits[y, x] = 1 if np.median(cell) < 128 else 0
+        
+        # Check polarity - the border should be BLACK (1)
+        # Top-left corner should be part of black border
         if bits[0, 0] == 0:
             bits = 1 - bits
+        
         cv2.imshow("Warped quad", self.draw_grid(warped))
         cv2.waitKey(1)
+        
+        self.get_logger().info(f"\nDetected 6x6 bits:\n{bits}")
 
+        # Try all 4 rotations of the detected tag
         for rot in range(4):
             rotated_bits = np.rot90(bits, rot)
-            inner = rotated_bits[1:-1, 1:-1].flatten()
+            detected_code = rotated_bits.flatten()  # All 36 bits
 
             for tag_id, template in self.valid_tag_codes.items():
-                score = np.sum(inner == template)
-                if score > 10:  # Only show decent matches
-                    self.get_logger().info(f"  Tag {tag_id}: score={score}/16")
-                    if score >= 14:  # Close match - show details
-                        self.get_logger().info(f"    Template: {template}")
-                        self.get_logger().info(f"    Detected: {inner}")
-                        self.get_logger().info(f"    Reshaped template:\n{template.reshape(4,4)}")
-                        self.get_logger().info(f"    Reshaped detected:\n{inner.reshape(4,4)}")
+                # Compare full 36-bit codes
+                score = np.sum(detected_code == template)
                 
                 if score > best_score:
                     best_score = score
                     best_id = tag_id
+                    best_rotation = rot
+                    
+                    if tag_id == 4 and score >= 30:  # If close to tag 4
+                        self.get_logger().info(f"\nTag 4 at rotation {rot}: score={score}/36")
+                        self.get_logger().info(f"Detected:\n{rotated_bits}")
+                        self.get_logger().info(f"Template:\n{template.reshape(6,6)}")
 
-        threshold = 16 - self.max_hamming
-        self.get_logger().info(f"\nBest match: ID={best_id}, score={best_score}, threshold={threshold}")
+        # For 36 bits, adjust threshold
+        threshold = 36 - (self.max_hamming * 2)  # Scale hamming distance
+        
+        self.get_logger().info(f"Best: ID={best_id}, score={best_score}/36, rotation={best_rotation}, threshold={threshold}")
         
         if best_score >= threshold:
-            self.get_logger().info(f"MATCHED TAG {best_id}!")
+            self.get_logger().info(f"MATCHED TAG {best_id}")
             return best_id
         else:
-            self.get_logger().warn(f"NO MATCH (best score {best_score} < threshold {threshold})")
+            self.get_logger().warn(f"NO MATCH (best={best_id} with {best_score}/36, need {threshold})")
         
         return None
 
 
     def load_tag36h11_codes(self):
+        """Load codes as full 36-bit patterns"""
         codes = {}
         for tag_id, img in self.tags.items():
-            codes[tag_id] =  self.decode_template(img)
+            code = self.decode_template(img)  # Now returns 36 bits
+            codes[tag_id] = code
+            self.get_logger().info(f'\nTag {tag_id} code (6x6):\n{code.reshape(6,6)}')
+        
+        self.get_logger().info(f"Loaded {len(codes)} tag codes (36 bits each)")
         return codes
     
     def camera_info_callback(self, msg):
