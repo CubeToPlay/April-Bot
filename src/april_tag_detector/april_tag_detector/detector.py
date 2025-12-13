@@ -199,6 +199,14 @@ class AprilTagDetector(Node):
             return best_id, best_rot
 
         return None, None
+    def has_strong_cell_contrast(self, warped_bin):
+        inner = warped_bin[warped_bin.shape[0]//7:-warped_bin.shape[0]//7,
+                        warped_bin.shape[1]//7:-warped_bin.shape[1]//7]
+
+        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
+        vals = grid.flatten()
+
+        return np.std(vals) > 60
 
     def validate_tag_quality(self, gray_img, corners):
         """Combined validation for tag quality"""
@@ -258,6 +266,8 @@ class AprilTagDetector(Node):
             return None
 
         if not self.border_is_continuous(warped_bin):
+            return None
+        if not self.has_strong_cell_contrast(warped_bin):
             return None
         # Decode bits STRICTLY
         bits = self.strict_decode(warped_bin)
