@@ -423,6 +423,7 @@ class AprilTagDetector(Node):
                         quad_corners = self.select_quadrilateral_corners(region_corners)
 
                         if quad_corners is not None:
+                            cv2.polylines(gray, [quad_corners.astype(int)], True, (255,0,0), 2)
                             self.get_logger().info('Found a quadrilateral!', throttle_duration_sec=2.0)
                             # Verify this looks like a tag
                             if self.validate_quadrilateral(quad_corners):
@@ -866,7 +867,6 @@ class AprilTagDetector(Node):
                 
                 # Draw on image
                 vis_image = self.draw_detection(vis_image, tag_id, corners, pose, rotation)
-                
                 self.get_logger().info(
                     f'Tag {tag_id} (rot={rotation*90}°): ({pose["position"][0]:.2f}, '
                     f'{pose["position"][1]:.2f}, {pose["position"][2]:.2f})',
@@ -882,6 +882,11 @@ class AprilTagDetector(Node):
             )
         
         # Publish visualization
+        gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(cv_image, contours, -1, (0,255,0), 2)
+        self.visualization_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
         try:
             vis_msg = self.bridge.cv2_to_imgmsg(vis_image, "bgr8")
             self.visualization_pub.publish(vis_msg)
