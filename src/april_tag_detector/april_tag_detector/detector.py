@@ -188,20 +188,37 @@ class AprilTagDetector(Node):
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     def decode_template(self, img):
-        # black = 1
-        if np.mean(img) > 127:
-            img = 255 - img
-
+        border_size = 240 // 8  # 30 pixels
+    
+        # Extract just the 6x6 data region (180x180 pixels)
+        data_region = img[border_size:-border_size, border_size:-border_size]
+        
+        # Now divide this 180x180 region into 6x6 cells (30x30 each)
         GRID = 6
-        CELL = img.shape[0] // GRID
-
+        CELL = data_region.shape[0] // GRID  # Should be 30
+        
         bits = np.zeros((GRID, GRID), dtype=np.uint8)
-
+        
         for y in range(GRID):
             for x in range(GRID):
-                cell = img[y*CELL:(y+1)*CELL, x*CELL:(x+1)*CELL]
-                bits[y, x] = 1 if np.mean(cell) < 128 else 0
-        return bits[1:-1, 1:-1].flatten()
+                # Extract cell with small margin to avoid edge effects
+                margin = 4
+                cell = data_region[
+                    y*CELL + margin:(y+1)*CELL - margin,
+                    x*CELL + margin:(x+1)*CELL - margin
+                ]
+                
+                # Black = 1, White = 0
+                mean_val = np.mean(cell)
+                bits[y, x] = 0 if mean_val > 127 else 1
+        
+        self.get_logger().info(f"Template 6x6 bits:\n{bits}")
+        
+        # The INNER 4x4 is the actual tag ID
+        inner_bits = bits[1:-1, 1:-1].flatten()
+        self.get_logger().info(f"Template inner 4x4:\n{inner_bits.reshape(4,4)}")
+        
+        return inner_bits
     
     def draw_grid(self, img, grid=6):
         h = img.shape[0]
