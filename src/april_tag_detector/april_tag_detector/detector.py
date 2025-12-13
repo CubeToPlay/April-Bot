@@ -61,8 +61,6 @@ class AprilTagDetector(Node):
         if self.tag_dir:
             self.load_tags()
         self.valid_tag_codes = self.load_tag36h11_codes()
-
-        self.verify_templates()
         
         self.image_sub = self.create_subscription(
             Image,
@@ -143,38 +141,8 @@ class AprilTagDetector(Node):
         x, y, w, h = cv2.boundingRect(cnt)
 
         return img[y:y+h, x:x+w]
-    
-    def verify_templates(self, output_dir='/tmp/tag_verification'):
-        """Save visualizations of loaded templates for verification"""
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        
-        self.get_logger().info(f'Verifying {len(self.tags)} templates...')
-        
-        for tag_id, img in self.tags.items():
-            # Decode the 6x6 data region
-            bits = self.valid_tag_codes[tag_id]
-            bits_2d = bits.reshape(6, 6)
             
-            # Visualize the 6x6 data
-            bit_vis = np.zeros((600, 600), dtype=np.uint8)
-            cell_size = 100
-            for y in range(6):
-                for x in range(6):
-                    color = 0 if bits_2d[y, x] == 1 else 255
-                    bit_vis[y*cell_size:(y+1)*cell_size, 
-                            x*cell_size:(x+1)*cell_size] = color
-                    
-                    # Add text
-                    text_color = 255 if bits_2d[y, x] == 1 else 0
-                    cv2.putText(bit_vis, str(bits_2d[y, x]),
-                            (x*cell_size + 35, y*cell_size + 60),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, text_color, 2)
             
-            self.get_logger().info(f'Tag {tag_id} 6x6 data:\n{bits_2d}')
-        
-        self.get_logger().info(f'Verification images saved to: {output_dir}')
-    
     def load_tags(self):
         """Load AprilTag images from directory"""
         if not os.path.exists(self.tag_dir):
@@ -200,23 +168,18 @@ class AprilTagDetector(Node):
                     _, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
                     
                     self.tags[tag_id] = image
-                    self.get_logger().info(f'✓ Loaded tag ID {tag_id}')
+                    self.get_logger().info(f'Loaded tag ID {tag_id}')
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     def decode_template(self, img):
         """Decode template - 8x8 structure (1 border + 6 data + 1 border)"""
-        
-        self.get_logger().info(f'\n=== Decoding Template (8x8 structure) ===')
-        self.get_logger().info(f'Image shape: {img.shape}')
         
         # The image is 240x240, representing an 8x8 structure
         GRID = 8  # Changed from 6 to 8
         CELL = img.shape[0] // GRID  # Should be 30 pixels per cell
         
         bits_8x8 = np.zeros((GRID, GRID), dtype=np.uint8)
-        
-        self.get_logger().info(f'Cell size: {CELL}x{CELL} pixels')
-        
+                
         # Extract all 8x8 cells
         for y in range(GRID):
             for x in range(GRID):
@@ -229,11 +192,9 @@ class AprilTagDetector(Node):
                 # Black = 1, White = 0
                 bits_8x8[y, x] = 1 if mean_val < 128 else 0
         
-        self.get_logger().info(f'Full 8x8 pattern:\n{bits_8x8}')
         
         # Extract inner 6x6 (skip the border)
         bits_6x6 = bits_8x8[1:7, 1:7]
-        self.get_logger().info(f'Inner 6x6 data:\n{bits_6x6}')
         
         return bits_6x6.flatten()
     
@@ -265,33 +226,19 @@ class AprilTagDetector(Node):
     def decode_quad(self, warped):
         """Decode a warped quad from camera"""
         
-        # Debug: Save the warped image to see what we're working with
-        cv2.imshow('/tmp/last_warped_raw.png', warped)
-        
         # Check if image is properly binary
         unique_vals = np.unique(warped)
-        self.get_logger().info(f"Warped image unique values: {unique_vals}")
-        self.get_logger().info(f"Warped image mean: {np.mean(warped):.1f}")
         
         # If not binary, threshold it again
         if len(unique_vals) > 10:  # Not binary
-            self.get_logger().warn("Warped image is not binary, applying threshold...")
             _, warped = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
-            cv2.imshow('/tmp/last_warped_thresholded.png', warped)
         
         # Use the unified decode function
         detected_code = self.decode_apriltag_6x6(warped)
         detected_6x6 = detected_code.reshape(6, 6)
         
-        self.get_logger().info(f"\nDetected 6x6 pattern:\n{detected_6x6}")
-        
-        # Show visualization - now should show clean black/white cells
-        cv2.imshow("Warped quad", self.draw_grid(warped, grid=8))
-        cv2.waitKey(1)
-
         best_id = None
         best_score = -1
-        best_rotation = -1
 
         # Try all 4 rotations
         for rot in range(4):
@@ -303,17 +250,15 @@ class AprilTagDetector(Node):
                 if score > best_score:
                     best_score = score
                     best_id = tag_id
-                    best_rotation = rot
 
         threshold = 36 - (self.max_hamming * 2)
-        
-        self.get_logger().info(f"Best: ID={best_id}, score={best_score}/36, rotation={best_rotation}, threshold={threshold}")
-        
+                
         if best_score >= threshold:
-            self.get_logger().info(f"✓ MATCHED TAG {best_id}")
+            # Show visualization - now should show clean black/white cells
+            cv2.imshow("Warped quad", self.draw_grid(warped, grid=8))
+            cv2.waitKey(1)
+            self.get_logger().info(f"MATCHED TAG {best_id}")
             return best_id
-        else:
-            self.get_logger().warn(f"✗ NO MATCH")
         
         return None
 
