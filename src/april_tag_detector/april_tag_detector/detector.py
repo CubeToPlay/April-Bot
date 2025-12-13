@@ -35,6 +35,17 @@ class AprilTagDetector(Node):
 
         self.max_hamming = 0
 
+        self.min_confirm_time = 0.3  # seconds
+        self.max_center_jump = 30.0  # pixels
+
+        self.tag_tracks = {}  
+        # tag_id -> {
+        #   'first_seen': time,
+        #   'last_seen': time,
+        #   'last_center': np.array([x,y]),
+        #   'count': int
+        # }
+
         self.bridge = CvBridge()
 
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -149,6 +160,43 @@ class AprilTagDetector(Node):
             self.dist_coeffs = np.array(msg.d) if len(msg.d) > 0 else np.zeros(5)
             self.camera_frame = msg.header.frame_id
             self.get_logger().info(f'Camera calibration received. Frame: {self.camera_frame}')
+    
+    def update_tag_track(self, tag_id, center):
+        now = self.get_clock().now().nanoseconds * 1e-9
+
+        if tag_id not in self.tag_tracks:
+            self.tag_tracks[tag_id] = {
+                'first_seen': now,
+                'last_seen': now,
+                'last_center': center,
+                'count': 1
+            }
+            return False  # not confirmed yet
+
+        track = self.tag_tracks[tag_id]
+
+        # Reject if it jumped too much (likely false match)
+        if np.linalg.norm(center - track['last_center']) > self.max_center_jump:
+            self.tag_tracks[tag_id] = {
+                'first_seen': now,
+                'last_seen': now,
+                'last_center': center,
+                'count': 1
+            }
+            return False
+
+        track['last_seen'] = now
+        track['last_center'] = center
+        track['count'] += 1
+
+        return (now - track['first_seen']) >= self.min_confirm_time
+    
+    def prune_tracks(self, timeout=0.5):
+        now = self.get_clock().now().nanoseconds * 1e-9
+        self.tag_tracks = {
+            tid: tr for tid, tr in self.tag_tracks.items()
+            if now - tr['last_seen'] < timeout
+        }
     
     def check_tag_completeness(self, corners, img_shape):
         """Check if all 4 corners are well within the image bounds"""
@@ -731,8 +779,16 @@ class AprilTagDetector(Node):
         detections_array.header.stamp = self.get_clock().now().to_msg()
         detections_array.header.frame_id = self.camera_frame
         
+        self.prune_tracks()
+
         for tag in detected_tags:
             tag_id = tag['id']
+            center = tag['center']
+
+            confirmed = self.update_tag_track(tag_id, center)
+
+            if not confirmed:
+                continue
             corners = tag['corners']
             rotation = tag.get('rotation', 0)
             
