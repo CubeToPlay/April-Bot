@@ -3,7 +3,7 @@
   <model name="turtlebot3_waffle">
 
     <!-- Spawn slightly above ground -->
-    <pose>0 0 0.01 0 0 0</pose>
+    <pose>0 0 0.05 0 0 0</pose>
 
     <!-- ================= BASE ================= -->
     <link name="base_link">
