@@ -144,10 +144,7 @@ class AprilTagNavigator(Node):
         """
         self.current_detections = {}
         """Lists the tag ids that are seen in the current image frame"""
-        
-        # Frontier exploration
-        self.explored_cells = set()
-        """Set of (x, y) tuples marking all visited areas"""
+
         self.frontier_target = None
         """Current exploration destination: {'x': float, 'y': float}"""
         
@@ -161,9 +158,6 @@ class AprilTagNavigator(Node):
 
         self.pose_timer = None
         """Timer to update the robot pose every 0.2 secconds"""
-
-        self.exploration_timer = None
-        """Timer to mark current grid as explored as the robot is running"""
 
         self.nav_timer = None
         """Timer to run the navigation loop to move the robot"""
@@ -239,12 +233,6 @@ class AprilTagNavigator(Node):
         self.pose_timer = self.create_timer(
             0.2,
             self.update_robot_pose
-        )
-
-        # Mark explored space
-        self.exploration_timer = self.create_timer(
-            1.0,
-            self.mark_explored
         )
 
         # Main navigation loop
@@ -383,20 +371,6 @@ class AprilTagNavigator(Node):
         self.laser_ranges = np.array(msg.ranges)
         # This replaces the inf and nan values with max range (which is what happens when no obstacle is detected in the given direction)
         self.laser_ranges = np.where(np.isfinite(self.laser_ranges), self.laser_ranges, msg.range_max)
-
-    def mark_explored(self):
-        """Mark current area as explored
-        Converts the robot's world position to exploration grid coordinates using the frontier resolution
-        """
-        if self.robot_pose is None:
-            return
-        
-        gx = int(self.robot_pose['x'] / self.frontier_grid_size)
-        gy = int(self.robot_pose['y'] / self.frontier_grid_size)
-        
-        for dx in range(-2, 3):
-            for dy in range(-2, 3):
-                self.explored_cells.add((gx + dx, gy + dy))
 
     def world_to_map(self, x, y):
         """Convert world to map coordinates"""
@@ -544,39 +518,44 @@ class AprilTagNavigator(Node):
         return None, None
     
     def find_frontier(self):
-        """Find unexplored frontier"""
-        if self.robot_pose is None or self.map_data is None:
+        if self.map_data is None or self.robot_pose is None:
             return None
-        
-        # Get robot's position in the exploration grid
-        robot_gx = int(self.robot_pose['x'] / self.frontier_grid_size)
-        robot_gy = int(self.robot_pose['y'] / self.frontier_grid_size)
-        
+
+        robot_mx, robot_my = self.world_to_map(
+            self.robot_pose['x'], self.robot_pose['y']
+        )
+
         candidates = []
-        
-        # Searches 30 cells in each direction to find the closest unexplored location
-        for dx in range(-30, 30, 2):
-            for dy in range(-30, 30, 2):
-                gx, gy = robot_gx + dx, robot_gy + dy
-                
-                if (gx, gy) in self.explored_cells:
+
+        for my in range(1, self.map_height - 1):
+            for mx in range(1, self.map_width - 1):
+
+                # must be free
+                if self.map_data[my, mx] != 0:
                     continue
-                
-                wx = gx * self.frontier_grid_size
-                wy = gy * self.frontier_grid_size
-                
-                mx, my = self.world_to_map(wx, wy)
-                if self.is_free(mx, my):
-                    dist = math.sqrt(dx**2 + dy**2)
-                    candidates.append((dist, wx, wy))
-        
-        # Returns the nearest frontier (by distance) if there are any unexplored locations left
-        if candidates:
-            candidates.sort()
-            self.get_logger().info(f"Candidates: {candidates[0][1]}, {candidates[0][2]}")
-            return {'x': candidates[0][1], 'y': candidates[0][2]}
-        self.get_logger().info(f"No frontier candidates")
-        return None
+
+                # check if adjacent to unknown
+                neighbors = [
+                    self.map_data[my+1, mx],
+                    self.map_data[my-1, mx],
+                    self.map_data[my, mx+1],
+                    self.map_data[my, mx-1],
+                ]
+
+                if -1 not in neighbors:
+                    continue
+
+                # distance to robot
+                dist = math.hypot(mx - robot_mx, my - robot_my)
+                wx, wy = self.map_to_world(mx, my)
+                candidates.append((dist, wx, wy))
+
+        if not candidates:
+            self.get_logger().warn("No frontier found")
+            return None
+
+        candidates.sort()
+        return {'x': candidates[0][1], 'y': candidates[0][2]}
     
     def publish_path(self, path):
         """Publish path for visualization
