@@ -110,34 +110,47 @@ class AprilTagDetector(Node):
         self.get_logger().info(f'Verifying {len(self.tags)} templates...')
         
         for tag_id, img in self.tags.items():
-            # Create a visualization with grid
-            grid_img = self.draw_grid(img, grid=6)
-            grid_filename = os.path.join(output_dir, f'tag_{tag_id}_grid.png')
+            # Show 8x8 grid overlay
+            grid_img = self.draw_grid(img, grid=8)
+            grid_filename = os.path.join(output_dir, f'tag_{tag_id}_grid_8x8.png')
             cv2.imshow(grid_filename, grid_img)
             
-            # Decode and visualize bits (6x6 now)
+            # Decode the 6x6 data region
             bits = self.valid_tag_codes[tag_id]
-            bits_2d = bits.reshape(6, 6)  # Changed from 4,4
+            bits_2d = bits.reshape(6, 6)
             
-            # Create a larger visualization of the bit pattern
+            # Visualize the 6x6 data
             bit_vis = np.zeros((600, 600), dtype=np.uint8)
             cell_size = 100
-            for y in range(6):  # Changed from 4
-                for x in range(6):  # Changed from 4
-                    color = 0 if bits_2d[y, x] == 1 else 255  # Black for 1
+            for y in range(6):
+                for x in range(6):
+                    color = 0 if bits_2d[y, x] == 1 else 255
                     bit_vis[y*cell_size:(y+1)*cell_size, 
                             x*cell_size:(x+1)*cell_size] = color
                     
-                    # Add text showing bit value
+                    # Add text
                     text_color = 255 if bits_2d[y, x] == 1 else 0
                     cv2.putText(bit_vis, str(bits_2d[y, x]),
                             (x*cell_size + 35, y*cell_size + 60),
                             cv2.FONT_HERSHEY_SIMPLEX, 1.2, text_color, 2)
             
-            bit_filename = os.path.join(output_dir, f'tag_{tag_id}_bits.png')
+            bit_filename = os.path.join(output_dir, f'tag_{tag_id}_bits_6x6.png')
             cv2.imshow(bit_filename, bit_vis)
             
-            self.get_logger().info(f'Tag {tag_id} 6x6 bits:\n{bits_2d}')
+            # Create comparison showing structure
+            img_resized = cv2.resize(img, (600, 600), interpolation=cv2.INTER_NEAREST)
+            grid_resized = cv2.resize(grid_img, (600, 600), interpolation=cv2.INTER_NEAREST)
+            
+            comparison = np.hstack([
+                cv2.cvtColor(img_resized, cv2.COLOR_GRAY2BGR) if len(img_resized.shape) == 2 else img_resized,
+                grid_resized,
+                cv2.cvtColor(bit_vis, cv2.COLOR_GRAY2BGR)
+            ])
+            
+            comp_filename = os.path.join(output_dir, f'tag_{tag_id}_comparison.png')
+            cv2.imshow(comp_filename, comparison)
+            
+            self.get_logger().info(f'Tag {tag_id} 6x6 data:\n{bits_2d}')
         
         self.get_logger().info(f'Verification images saved to: {output_dir}')
     
