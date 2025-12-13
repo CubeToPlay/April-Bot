@@ -121,13 +121,26 @@ class AprilTagDetector(Node):
             bits = self.extract_inner_bits(data['image'])
             codes[tag_id] = bits
         return codes
-    def extract_inner_bits(self, img):
+    def extract_inner_bits(self, img, grid_size=4, border_ratio=0.25):
         size = img.shape[0]
-        border = int(size * 0.25)  # 25% border
+        border = int(size * border_ratio)
         inner = img[border:-border, border:-border]
-        grid = cv2.resize(inner, (4,4), interpolation=cv2.INTER_AREA)
+        grid = cv2.resize(inner, (grid_size, grid_size), interpolation=cv2.INTER_AREA)
         bits = (grid < 128).astype(int)  # black=1, white=0
         return bits.flatten()
+    
+    def match_template(self, bits):
+        best_match = None
+        best_score = -1
+        for tag_id, template_bits in self.templates.items():
+            score = np.sum(template_bits == bits)
+            if score > best_score:
+                best_score = score
+                best_match = tag_id
+        if best_score >= self.match_threshold:
+            return best_match
+        return None
+    
     
     def camera_info_callback(self, msg):
         """Store camera calibration"""
@@ -196,25 +209,51 @@ class AprilTagDetector(Node):
                                cv2.THRESH_BINARY, 11, 2)
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+
         detected_tags = []
         for cnt in contours:
             epsilon = 0.05 * cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, epsilon, True)
-            if len(approx) == 4 and cv2.isContourConvex(approx):
-                quad = approx.reshape(4,2)
-                w = np.linalg.norm(quad[0] - quad[1])
-                h = np.linalg.norm(quad[0] - quad[3])
-                if w < min_size or h < min_size:
-                    continue
-                quad = self.order_points(quad)
-                warp_size = 200
-                dst = np.array([[0,0],[warp_size-1,0],[warp_size-1,warp_size-1],[0,warp_size-1]], dtype=np.float32)
-                M = cv2.getPerspectiveTransform(quad, dst)
-                warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-                tag_bits = self.extract_inner_bits(warped)
-                tag_id = self.match_tag_bits(tag_bits)
+            if len(approx) != 4 or not cv2.isContourConvex(approx):
+                continue
+
+            quad = approx.reshape(4,2)
+            w = np.linalg.norm(quad[0]-quad[1])
+            h = np.linalg.norm(quad[0]-quad[3])
+            if w < self.min_size or h < self.min_size:
+                continue
+
+            quad = self.order_points(quad)
+            dst = np.array([
+                [0,0],
+                [self.warp_size-1,0],
+                [self.warp_size-1,self.warp_size-1],
+                [0,self.warp_size-1]
+            ], dtype=np.float32)
+            M = cv2.getPerspectiveTransform(quad, dst)
+            warped = cv2.warpPerspective(gray, M, (self.warp_size, self.warp_size))
+            warped = cv2.adaptiveThreshold(
+                warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY, 11, 2
+            )
+
+            # Check all 4 rotations for possible orientation
+            found_id = None
+            for rot in range(4):
+                rotated = np.rot90(warped, k=rot)
+                bits = self.extract_inner_bits(rotated)
+                tag_id = self.match_template(bits)
                 if tag_id is not None:
-                    detected_tags.append({'id': tag_id, 'corners': quad, 'center': np.mean(quad, axis=0)})
+                    found_id = tag_id
+                    break
+
+            if found_id is not None:
+                detected_tags.append({
+                    "id": found_id,
+                    "corners": quad,
+                    "center": np.mean(quad, axis=0)
+                })
+
         return detected_tags
 
     def detect_apriltags(self, img):
