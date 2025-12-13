@@ -168,8 +168,6 @@ class AprilTagNavigator(Node):
     def map_ready(self):
         if self.map_data is None:
             return False
-        if self.map_data.width == 0 or self.map_data.height == 0:
-            return False
 
         if len(self.map_data) == 0:
             return False
