@@ -204,9 +204,7 @@ class AprilTagDetector(Node):
                 M = cv2.getPerspectiveTransform(quad, dst)
                 warped = cv2.warpPerspective(gray, M, (tag_size*10, tag_size*10))
                 tag_bits = self.decode(warped, tag_size)
-                matched_id = self.match_tag_bits(tag_bits)
-                if matched_id is not None:
-                    detected_tags.append({'id': matched_id, 'corners': quad, 'center': np.mean(quad, axis=0)})
+                detected_tags.append({'id': tag_bits, 'corners': quad, 'center': np.mean(quad, axis=0)})
         return detected_tags
 
     def detect_apriltags(self, img):
