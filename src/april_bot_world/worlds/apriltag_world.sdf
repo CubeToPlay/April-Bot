@@ -267,14 +267,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://RockCubeTest.dae</uri>
+              <uri>RockCubeTest.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://RockCubeTest.dae</uri>
+              <uri>RockCubeTest.dae</uri>
             </mesh>
           </geometry>
         </collision>
@@ -302,14 +302,14 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://worldwalls.dae</uri>
+              <uri>worldwalls.dae</uri>
             </mesh>
           </geometry>
         </visual>
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://worldwalls.dae</uri>
+              <uri>worldwalls.dae</uri>
             </mesh>
           </geometry>
         </collision>
