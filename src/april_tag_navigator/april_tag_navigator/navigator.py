@@ -530,9 +530,9 @@ class AprilTagNavigator(Node):
         for my in range(1, self.map_height - 1):
             for mx in range(1, self.map_width - 1):
 
-                # # must be free
-                # if self.map_data[my, mx] != 0:
-                #     continue
+                # must be free
+                if self.map_data[my, mx] >= 50:
+                    continue
 
                 # check if adjacent to unknown
                 neighbors = [
@@ -548,6 +548,8 @@ class AprilTagNavigator(Node):
                 # distance to robot
                 dist = math.hypot(mx - robot_mx, my - robot_my)
                 wx, wy = self.map_to_world(mx, my)
+                if dist * self.map_resolution < 0.6:  # minimum 60 cm
+                    continue
                 candidates.append((dist, wx, wy))
 
         if not candidates:
@@ -636,6 +638,7 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
+        self.spin_start_time = self.get_clock().now()
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
@@ -696,7 +699,14 @@ class AprilTagNavigator(Node):
                     self.state = NavigationState.TRACKING
                 else:
                     # If the target AprilTag has not been discovered, the robot should continue PLANNING and move onto the next closest unexplored location
-                    self.state = NavigationState.PLANNING
+                    twist.linear.x = 0.0
+                    twist.angular.z = 0.4
+                    self.cmd_vel_pub.publish(twist)
+
+                    # After spinning a bit, replan
+                    if (self.get_clock().now() - self.spin_start_time).nanoseconds > 2e9:
+                        self.spin_start_time = self.get_clock().now()
+                        self.state = NavigationState.PLANNING
                 return
             
             # Robot should determine the distance and angle to the next waypoint and move towards it.
