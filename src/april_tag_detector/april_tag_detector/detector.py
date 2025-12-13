@@ -176,6 +176,12 @@ class AprilTagDetector(Node):
             if b:
                 tag_id |= (1 << i)
         return int(tag_id)
+    
+    def match_tag_bits(self, bits):
+        for tag_id, template_bits in self.valid_tag_codes.items():
+            if np.array_equal(bits, template_bits):
+                return tag_id
+        return None
 
     def find_apriltags_contours(self, image, min_size=20, tag_size=6):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -198,7 +204,9 @@ class AprilTagDetector(Node):
                 M = cv2.getPerspectiveTransform(quad, dst)
                 warped = cv2.warpPerspective(gray, M, (tag_size*10, tag_size*10))
                 tag_bits = self.decode(warped, tag_size)
-                detected_tags.append({'id': tag_bits, 'corners': quad, 'center': np.mean(quad, axis=0)})
+                matched_id = self.match_tag_bits(tag_bits)
+                if matched_id is not None:
+                    detected_tags.append({'id': matched_id, 'corners': quad, 'center': np.mean(quad, axis=0)})
         return detected_tags
 
     def detect_apriltags(self, img):
