@@ -384,7 +384,7 @@ class AprilTagNavigator(Node):
         y = my * self.map_resolution + self.map_origin['y']
         return x, y
     
-    def is_free(self, mx, my, radius=2):
+    def is_free(self, mx, my, radius=0):
         """Check if map cell is free
         0-49: Free space
         50-100: Occupied (obstacle)
