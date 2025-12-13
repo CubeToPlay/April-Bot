@@ -5,6 +5,7 @@ from geometry_msgs.msg import Twist, PoseStamped
 from nav_msgs.msg import OccupancyGrid, Path
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
 import numpy as np
 import math
 from enum import Enum
@@ -66,13 +67,18 @@ class AprilTagNavigator(Node):
         """Stores the last set of transformations"""
         self.tf_listener = TransformListener(self.tf_buffer, self)
         """Receives and stores transforms that were published on the /tf topic"""
-        self.tf_ready = False
-        """Used to avoid map errors"""
 
         # Subscribers
         self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
         """Subscribes to LiDAR data. """
-        self.map_sub = self.create_subscription(OccupancyGrid, '/map', self.map_callback, 10)
+        map_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,  # Critical for /map
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
+        self.map_sub = self.create_subscription(OccupancyGrid, '/map', self.map_callback, map_qos)
         """Subscribes to the SLAM generated map. Updated periodically as the robot explores the environment"""
         self.goal_sub = self.create_subscription(Int32, '/goal_id', self.goal_callback, 10)
         """Subscribes to goal inputs. The goal id is published here."""
@@ -314,8 +320,6 @@ class AprilTagNavigator(Node):
 
     def update_robot_pose(self):
         """Get robot pose from SLAM"""
-        if not self.tf_ready:
-            return
         try:
             transform = self.tf_buffer.lookup_transform(
                 'map', 'base_footprint',
