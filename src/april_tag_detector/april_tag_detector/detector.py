@@ -555,10 +555,10 @@ class AprilTagDetector(Node):
 
         half = self.tag_size / 2.0
         object_points = np.array([
-            [-half, -half, 0],
-            [ half, -half, 0],
-            [ half,  half, 0],
-            [-half,  half, 0]
+            [-half,  half, 0],   # TL
+            [ half,  half, 0],   # TR
+            [ half, -half, 0],   # BR
+            [-half, -half, 0],   # BL
         ], dtype=np.float32)
 
         success, rvec, tvec = cv2.solvePnP(
