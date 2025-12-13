@@ -147,11 +147,20 @@ class AprilTagDetector(Node):
 
         return bits[1:-1, 1:-1].flatten()
     
+    def draw_grid(self, img, grid=6):
+        h = img.shape[0]
+        step = h // grid
+        out = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        for i in range(1, grid):
+            cv2.line(out, (0, i*step), (h, i*step), (0,255,0), 1)
+            cv2.line(out, (i*step, 0), (i*step, h), (0,255,0), 1)
+        return out
     
     def decode_quad(self, warped):
         if np.mean(warped) > 127:
             warped = 255 - warped
-
+        cv2.imshow("Warped quad", self.draw_grid(warped))
+        cv2.waitKey(1)
         GRID = 6
         CELL = warped.shape[0] // GRID
 
@@ -171,7 +180,9 @@ class AprilTagDetector(Node):
                 bits[0, :], bits[-1, :],
                 bits[:, 0], bits[:, -1]
             ])
-
+            print("BITS:\n", bits)
+            print("BORDER:", border.mean())
+            
             if np.mean(border) < 0.75:
                 continue
 
@@ -285,11 +296,20 @@ class AprilTagDetector(Node):
         for i, cnt in enumerate(contours):
             area = cv2.contourArea(cnt)
             if area < 800:
+                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
             peri = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
-
+            # DEBUG: draw every quad candidate in BLUE
+            debug_image = image.copy()
+            cv2.polylines(
+                debug_image,
+                [approx.astype(int)],
+                True,
+                (255, 0, 0),  # blue = quad candidate
+                2
+            )
             if len(approx) != 4 or not cv2.isContourConvex(approx):
                 continue
 
@@ -335,7 +355,7 @@ class AprilTagDetector(Node):
                 "center": quad.mean(axis=0)
             })
 
-        return detected_tags
+        return detected_tags, debug_image
 
 
     def detect_apriltags(self, image):
@@ -415,8 +435,8 @@ class AprilTagDetector(Node):
             self.get_logger().error(f'Failed to convert image: {e}')
             return
 
-        detected_tags = self.find_apriltags_contours(cv_image)
-        vis_image = cv_image.copy()
+        detected_tags, debug_image = self.find_apriltags_contours(cv_image)
+        vis_image = debug_image
         detections_array = AprilTagDetectionArray()
         detections_array.header.stamp = self.get_clock().now().to_msg()
         detections_array.header.frame_id = self.camera_frame
