@@ -109,7 +109,7 @@
 
     <!-- ================= LEFT WHEEL ================= -->
     <link name="wheel_left_link">
-      <pose>0 0.10 0.033 1.5708 0 0</pose>
+      <pose>0 0.119 0.028 1.5708 0 0</pose>
 
       <inertial>
         <mass>0.18</mass>
@@ -153,7 +153,7 @@
 
     <!-- ================= RIGHT WHEEL ================= -->
     <link name="wheel_right_link">
-      <pose>0 -0.10 0.033 1.5708 0 0</pose>
+      <pose>0 -0.119 0.028 1.5708 0 0</pose>
 
       <inertial>
         <mass>0.18</mass>
@@ -197,7 +197,7 @@
 
     <!-- ================= CASTER ================= -->
     <link name="caster_back_link">
-      <pose>-0.11 0 0.01 0 0 0</pose>
+      <pose>-0.11 0 0.012 0 0 0</pose>
 
       <inertial>
         <mass>0.08</mass>
