@@ -174,7 +174,7 @@ class AprilTagNavigator(Node):
         try:
             return self.tf_buffer.can_transform(
                 'map',
-                'base_link',
+                'base_footprint',
                 rclpy.time.Time(),
                 timeout=rclpy.duration.Duration(seconds=0.2)
             )
@@ -190,7 +190,7 @@ class AprilTagNavigator(Node):
             # Try to get the transform
             transform = self.tf_buffer.lookup_transform(
                 'map',
-                'base_link',
+                'base_footprint',
                 rclpy.time.Time(),  # Get latest
                 timeout=rclpy.duration.Duration(seconds=0.5)
             )
@@ -199,7 +199,7 @@ class AprilTagNavigator(Node):
                 f'Map received: {self.map_width}x{self.map_height} cells'
             )
             self.get_logger().info(
-                f'TF ready: map->base_link transform available'
+                f'TF ready: map->base_footprint transform available'
             )
             self.get_logger().info('Starting navigation system!')
             
@@ -209,7 +209,7 @@ class AprilTagNavigator(Node):
             
         except TransformException as ex:
             self.get_logger().info(
-                f'Waiting for map->base_link TF... )', 
+                f'Waiting for map->base_footprint TF... )', 
                 throttle_duration_sec=2.0
             )
             self.get_logger().debug(f'TF error: {ex}')
@@ -310,7 +310,7 @@ class AprilTagNavigator(Node):
         """Get robot pose from SLAM"""
         try:
             transform = self.tf_buffer.lookup_transform(
-                'map', 'base_link',
+                'map', 'base_footprint',
                 rclpy.time.Time(),
                 timeout=rclpy.duration.Duration(seconds=0.1)
             )
@@ -326,13 +326,13 @@ class AprilTagNavigator(Node):
             )
         except TransformException as ex:
             self.get_logger().warn(
-                f'Could not transform map to base_link: {ex}',
+                f'Could not transform map to base_footprint: {ex}',
                 throttle_duration_sec=5.0
             )
             try:
-                # Check if odom->base_link exists (should be from Gazebo)
+                # Check if odom->base_footprint exists (should be from Gazebo)
                 transform = self.tf_buffer.lookup_transform(
-                    'odom', 'base_link',
+                    'odom', 'base_footprint',
                     rclpy.time.Time(),
                     timeout=rclpy.duration.Duration(seconds=0.5)
                 )
