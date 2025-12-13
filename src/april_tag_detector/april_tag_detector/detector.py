@@ -200,11 +200,14 @@ class AprilTagDetector(Node):
                 if w < min_size or h < min_size:
                     continue
                 quad = self.order_points(quad)
-                dst = np.array([[0,0],[tag_size*10-1,0],[tag_size*10-1,tag_size*10-1],[0,tag_size*10-1]], dtype="float32")
+                warp_size = 200
+                dst = np.array([[0,0],[warp_size-1,0],[warp_size-1,warp_size-1],[0,warp_size-1]], dtype=np.float32)
+                warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
                 M = cv2.getPerspectiveTransform(quad, dst)
-                warped = cv2.warpPerspective(gray, M, (tag_size*10, tag_size*10))
                 tag_bits = self.decode(warped, tag_size)
-                detected_tags.append({'id': tag_bits, 'corners': quad, 'center': np.mean(quad, axis=0)})
+                tag_id = self.match_tag_bits(tag_bits)
+                if tag_id is not None:
+                    detected_tags.append({'id': tag_id, 'corners': quad, 'center': np.mean(quad, axis=0)})
         return detected_tags
 
     def detect_apriltags(self, img):
