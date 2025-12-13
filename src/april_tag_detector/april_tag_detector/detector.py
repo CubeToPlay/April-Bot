@@ -194,49 +194,38 @@ class AprilTagDetector(Node):
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     def decode_template(self, img):
-        """Decode a template image into a 36-bit code (full 6x6)"""
+        """Decode template - 8x8 structure (1 border + 6 data + 1 border)"""
         
-        # The 240x240 image should contain the full AprilTag structure
-        # Standard AprilTag36h11: outer white border, then 6x6 data grid
+        self.get_logger().info(f'\n=== Decoding Template (8x8 structure) ===')
+        self.get_logger().info(f'Image shape: {img.shape}')
         
-        # Find where the actual tag starts (skip outer white border if present)
-        h, w = img.shape
+        # The image is 240x240, representing an 8x8 structure
+        GRID = 8  # Changed from 6 to 8
+        CELL = img.shape[0] // GRID  # Should be 30 pixels per cell
         
-        # Check if there's a white border by sampling edges
-        top_edge = np.mean(img[0:10, :])
-        left_edge = np.mean(img[:, 0:10])
+        bits_8x8 = np.zeros((GRID, GRID), dtype=np.uint8)
         
-        if top_edge > 200 and left_edge > 200:
-            # Has white border, crop it
-            border = h // 10  # Estimate ~10% border
-            img = img[border:-border, border:-border]
+        self.get_logger().info(f'Cell size: {CELL}x{CELL} pixels')
         
-        # Now we should have just the 6x6 tag data
-        # Resize to ensure consistent cell size
-        img = cv2.resize(img, (240, 240), interpolation=cv2.INTER_AREA)
-        
-        GRID = 6
-        CELL = img.shape[0] // GRID  # 40 pixels per cell
-        
-        bits = np.zeros((GRID, GRID), dtype=np.uint8)
-        
-        self.get_logger().info(f"\nDecoding template - cell size: {CELL}x{CELL}")
-        
+        # Extract all 8x8 cells
         for y in range(GRID):
             for x in range(GRID):
-                # Sample from center of cell
-                margin = CELL // 4
+                # Sample from center of cell to avoid edge effects
+                margin = 3
                 cell = img[y*CELL + margin:(y+1)*CELL - margin,
                         x*CELL + margin:(x+1)*CELL - margin]
                 
                 mean_val = np.mean(cell)
                 # Black = 1, White = 0
-                bits[y, x] = 1 if mean_val < 128 else 0
+                bits_8x8[y, x] = 1 if mean_val < 128 else 0
         
-        self.get_logger().info(f"Template 6x6 bits:\n{bits}")
+        self.get_logger().info(f'Full 8x8 pattern:\n{bits_8x8}')
         
-        # Return the FULL 6x6 as a flat array (36 bits)
-        return bits.flatten()
+        # Extract inner 6x6 (skip the border)
+        bits_6x6 = bits_8x8[1:7, 1:7]
+        self.get_logger().info(f'Inner 6x6 data:\n{bits_6x6}')
+        
+        return bits_6x6.flatten()
     
     def draw_grid(self, img, grid=6):
         h = img.shape[0]
