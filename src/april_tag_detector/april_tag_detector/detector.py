@@ -297,6 +297,7 @@ class AprilTagDetector(Node):
                 [0,warp_size-1]
             ], dtype=np.float32)
             M = cv2.getPerspectiveTransform(quad, dst)
+            warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
             warped = cv2.adaptiveThreshold(
                 warped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                 cv2.THRESH_BINARY, 11, 2
