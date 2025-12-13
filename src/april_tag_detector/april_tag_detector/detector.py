@@ -99,6 +99,40 @@ class AprilTagDetector(Node):
         x, y, w, h = cv2.boundingRect(cnt)
 
         return img[y:y+h, x:x+w]
+    
+    def verify_templates(self, output_dir='/tmp/tag_verification'):
+        """Save visualizations of loaded templates for verification"""
+        import os
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
+        self.get_logger().info(f'Verifying {len(self.tags)} templates...')
+        
+        for tag_id, img in self.tags.items():
+            # Create a visualization with grid
+            grid_img = self.draw_grid(img, grid=6)
+            grid_filename = os.path.join(output_dir, f'tag_{tag_id}_grid.png')
+            cv2.imshow(grid_filename, grid_img)
+            
+            # Decode and visualize bits
+            bits = self.decode_template(img)
+            bits_2d = bits.reshape(4, 4)
+            
+            # Create a larger visualization of the bit pattern
+            bit_vis = np.zeros((200, 200), dtype=np.uint8)
+            cell_size = 50
+            for y in range(4):
+                for x in range(4):
+                    color = 255 if bits_2d[y, x] == 0 else 0
+                    bit_vis[y*cell_size:(y+1)*cell_size, 
+                            x*cell_size:(x+1)*cell_size] = color
+            
+            bit_filename = os.path.join(output_dir, f'tag_{tag_id}_bits.png')
+            cv2.imshow(bit_filename, bit_vis)
+            
+            self.get_logger().info(f'Tag {tag_id}: bits = {bits}')
+        
+        self.get_logger().info(f'Verification images saved to: {output_dir}')
     def load_tags(self):
         """Load AprilTag images from directory
         AprilTag format: tag36h11-<id>.png
@@ -282,7 +316,7 @@ class AprilTagDetector(Node):
             peri = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
             area = cv2.contourArea(cnt)
-            if area < 800:
+            if area < 400:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
@@ -299,17 +333,17 @@ class AprilTagDetector(Node):
                 continue
 
             # Must have a parent OR child → nested contour
-            parent = hierarchy[0][i][3]
-            child  = hierarchy[0][i][2]
-            if parent == -1 and child == -1:
-                continue
+            # parent = hierarchy[0][i][3]
+            # child  = hierarchy[0][i][2]
+            # if parent == -1 and child == -1:
+            #     continue
 
             quad = self.order_points(approx.reshape(4, 2))
 
             # Square-ish
             w = np.linalg.norm(quad[0] - quad[1])
             h = np.linalg.norm(quad[0] - quad[3])
-            if not 0.7 < w / h < 1.3:
+            if not 0.6 < w / h < 1.6:
                 continue
 
             # Warp
