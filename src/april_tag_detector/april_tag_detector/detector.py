@@ -132,7 +132,7 @@ class AprilTagDetector(Node):
     def match_template(self, bits, match_threshold=14):
         best_match = None
         best_score = -1
-        for tag_id, template_bits in self.templates.items():
+        for tag_id, template_bits in self.valid_tag_codes.items():
             score = np.sum(template_bits == bits)
             if score > best_score:
                 best_score = score
