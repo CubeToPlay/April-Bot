@@ -286,13 +286,27 @@ class AprilTagDetector(Node):
     def decode_quad(self, warped):
         """Decode a warped quad from camera"""
         
-        # Use the SAME decode function as templates
+        # Debug: Save the warped image to see what we're working with
+        cv2.imshow('/tmp/last_warped_raw.png', warped)
+        
+        # Check if image is properly binary
+        unique_vals = np.unique(warped)
+        self.get_logger().info(f"Warped image unique values: {unique_vals}")
+        self.get_logger().info(f"Warped image mean: {np.mean(warped):.1f}")
+        
+        # If not binary, threshold it again
+        if len(unique_vals) > 10:  # Not binary
+            self.get_logger().warn("Warped image is not binary, applying threshold...")
+            _, warped = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
+            cv2.imshow('/tmp/last_warped_thresholded.png', warped)
+        
+        # Use the unified decode function
         detected_code = self.decode_apriltag_6x6(warped)
         detected_6x6 = detected_code.reshape(6, 6)
         
         self.get_logger().info(f"\nDetected 6x6 pattern:\n{detected_6x6}")
         
-        # Show visualization
+        # Show visualization - now should show clean black/white cells
         cv2.imshow("Warped quad", self.draw_grid(warped, grid=8))
         cv2.waitKey(1)
 
@@ -305,31 +319,22 @@ class AprilTagDetector(Node):
             rotated_code = np.rot90(detected_6x6, rot).flatten()
 
             for tag_id, template in self.valid_tag_codes.items():
-                # Compare the codes
                 score = np.sum(rotated_code == template)
                 
                 if score > best_score:
                     best_score = score
                     best_id = tag_id
                     best_rotation = rot
-                    
-                    if score >= 32:  # Close match - log details
-                        self.get_logger().info(f"\nTag {tag_id} at rotation {rot}: score={score}/36")
-                        if score < 36:
-                            self.get_logger().info(f"Detected:\n{rotated_code.reshape(6,6)}")
-                            self.get_logger().info(f"Template:\n{template.reshape(6,6)}")
-                            diff = (rotated_code != template).reshape(6,6)
-                            self.get_logger().info(f"Differences:\n{diff.astype(int)}")
 
         threshold = 36 - (self.max_hamming * 2)
         
-        self.get_logger().info(f"\nBest: ID={best_id}, score={best_score}/36, rotation={best_rotation}, threshold={threshold}")
+        self.get_logger().info(f"Best: ID={best_id}, score={best_score}/36, rotation={best_rotation}, threshold={threshold}")
         
         if best_score >= threshold:
             self.get_logger().info(f"✓ MATCHED TAG {best_id}")
             return best_id
         else:
-            self.get_logger().warn(f"✗ NO MATCH (best={best_id} with {best_score}/36, need {threshold})")
+            self.get_logger().warn(f"✗ NO MATCH")
         
         return None
 
@@ -424,6 +429,8 @@ class AprilTagDetector(Node):
     def find_apriltags_contours(self, image, warp_size=240):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         debug_image = image.copy()
+        
+        # Threshold for finding contours
         thresh = cv2.adaptiveThreshold(
             gray, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -444,37 +451,25 @@ class AprilTagDetector(Node):
             peri = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
             area = cv2.contourArea(cnt)
+            
             if area < 400:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
+            cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 0), 2)
             
-            # DEBUG: draw every quad candidate in BLUE
-            cv2.polylines(
-                debug_image,
-                [approx.astype(int)],
-                True,
-                (255, 0, 0),  # blue = quad candidate
-                2
-            )
             if len(approx) != 4 or not cv2.isContourConvex(approx):
                 continue
 
-            # Must have a parent OR child → nested contour
-            # parent = hierarchy[0][i][3]
-            # child  = hierarchy[0][i][2]
-            # if parent == -1 and child == -1:
-            #     continue
-
             quad = self.order_points(approx.reshape(4, 2))
 
-            # Square-ish
+            # Square-ish check
             w = np.linalg.norm(quad[0] - quad[1])
             h = np.linalg.norm(quad[0] - quad[3])
             if not 0.6 < w / h < 1.6:
                 continue
 
-            # Warp
+            # Warp - IMPORTANT: Warp from ORIGINAL GRAY, not from thresh
             dst = np.array([
                 [0, 0],
                 [warp_size - 1, 0],
@@ -483,16 +478,30 @@ class AprilTagDetector(Node):
             ], dtype=np.float32)
 
             M = cv2.getPerspectiveTransform(quad.astype(np.float32), dst)
+            
+            # *** KEY FIX: Warp from original gray, not from thresh ***
             warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-
-            warped = cv2.adaptiveThreshold(
-                warped, 255,
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,
-                11, 2
-            )
-
-            tag_id = self.decode_quad(warped)
+            
+            # *** THEN apply a clean threshold to the warped image ***
+            # Try different threshold methods to see which works best:
+            
+            # Option 1: Otsu's method (automatic threshold)
+            _, warped_thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            
+            # Option 2: Simple fixed threshold
+            # _, warped_thresh = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
+            
+            # Option 3: Adaptive threshold (if lighting varies)
+            # warped_thresh = cv2.adaptiveThreshold(
+            #     warped, 255,
+            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            #     cv2.THRESH_BINARY,
+            #     31, 10
+            # )
+            
+            # Use the thresholded version for decoding
+            tag_id = self.decode_quad(warped_thresh)
+            
             if tag_id is None:
                 continue
 
