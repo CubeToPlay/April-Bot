@@ -395,52 +395,44 @@ class AprilTagDetector(Node):
         
         return detected_tags
     
-    def find_quadrilaterals_from_corners(self, gray, corners):
-        """Find quadrilaterals by grouping nearby corners"""
-        detected_tags = []
+    def find_quadrilaterals_from_corners(self, gray, all_corners):
+        """
+        Given all detected corner points, find valid quadrilaterals (AprilTags).
+        Returns a list of quadrilaterals, each with exactly 4 ordered points.
+        """
+        candidate_quads = []
 
-        # Threshold image
-        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        for contour in all_corners:
+            # Ensure contour is numpy array of shape (N,1,2)
+            contour = np.array(contour)
+            if contour.ndim == 3 and contour.shape[1] == 1:
+                contour = contour.reshape(-1, 2)
 
-        # Find contours
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Approximate the contour to reduce points
+            epsilon = 0.05 * cv2.arcLength(contour, True)  # 5% of perimeter
+            approx = cv2.approxPolyDP(contour, epsilon, True)
 
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area < 300:  # Skip small contours
+            # Only keep quadrilaterals
+            if len(approx) != 4:
                 continue
 
-            # Approximate polygon
-            peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
+            # Ensure it's convex (important for AprilTags)
+            if not cv2.isContourConvex(approx):
+                continue
 
-            if len(approx) == 4:
-                quad = approx.reshape(4, 2).astype(np.float32)
-                # Check aspect ratio
-                width = np.linalg.norm(quad[0] - quad[1])
-                height = np.linalg.norm(quad[0] - quad[3])
-                aspect_ratio = max(width, height) / min(width, height)
-                if aspect_ratio > 3.0:
-                    continue
+            # Order points consistently: top-left, top-right, bottom-right, bottom-left
+            quad = self.order_points(approx.reshape(4, 2))
 
-                bits = self.extract_bit_grid(gray, corners)
-                if bits is None:
-                    self.get_logger().warn('Bit extraction failed!', throttle_duration_sec=2.0)
-                    continue  # skip this quad entirely
+            # Optional: check size of quadrilateral (filter tiny shapes / noise)
+            (tl, tr, br, bl) = quad
+            width = np.linalg.norm(tr - tl)
+            height = np.linalg.norm(bl - tl)
+            if width < 5 or height < 5:  # minimum tag size in pixels
+                continue
 
-                tag_id, rotation = self.matches_known_apriltag(bits)
-                if tag_id is None:
-                    continue  # skip unrecognized tag
+            candidate_quads.append(quad)
 
-                # Now safe to append
-                detected_tags.append({
-                    'id': tag_id,
-                    'corners': corners,
-                    'center': np.mean(corners, axis=0),
-                    'rotation': rotation
-                })
-
-        return detected_tags
+        return candidate_quads
     
     def select_quadrilateral_corners(self, corners):
         """Select 4 corners that form a quadrilateral"""
