@@ -34,10 +34,10 @@ def generate_launch_description():
             PathJoinSubstitution([pkg_path, 'models'])
         ),
         
-        # SetEnvironmentVariable(
-        #     'TURTLEBOT3_MODEL',
-        #     'waffle'
-        # ),
+        SetEnvironmentVariable(
+            'TURTLEBOT3_MODEL',
+            'waffle'
+        ),
         # Launch Gazebo with your world
         ExecuteProcess(
             cmd=['gz', 'sim', world_path, '-r'],
@@ -96,13 +96,13 @@ def generate_launch_description():
         #     parameters=[{'use_sim_time': True}]
         # ),
 
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
-        #     launch_arguments={
-        #         'x_pose': x_pose,
-        #         'y_pose': y_pose
-        #     }.items(),
-        # ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
+            launch_arguments={
+                'x_pose': x_pose,
+                'y_pose': y_pose
+            }.items(),
+        ),
         # Node(
         #     package='tf2_ros',
         #     executable='static_transform_publisher',
