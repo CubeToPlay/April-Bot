@@ -166,7 +166,16 @@ class AprilTagDetector(Node):
             for j in range(tag_size):
                 cell = warped[i*cell_size:(i+1)*cell_size, j*cell_size:(j+1)*cell_size]
                 bits[i, j] = 1 if np.mean(cell) < 128 else 0
-        return bits[1:-1, 1:-1].flatten()
+
+        # Inner 4x4 grid (skip border)
+        inner_bits = bits[1:-1, 1:-1].flatten()
+        
+        # Convert 16 bits to integer
+        tag_id = 0
+        for i, b in enumerate(inner_bits):
+            if b:
+                tag_id |= (1 << i)
+        return int(tag_id)
 
     def find_apriltags_contours(self, image, min_size=20, tag_size=6):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
