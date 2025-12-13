@@ -217,7 +217,7 @@ class AprilTagDetector(Node):
             if pose is not None:
                 self.publish_detection(tag_id, pose)
                 detection = AprilTagDetection()
-                detection.id = tag_id
+                detection.id = int(tag_id)
                 detection.pose.position.x = float(pose['position'][0])
                 detection.pose.position.y = float(pose['position'][1])
                 detection.pose.position.z = float(pose['position'][2])
@@ -226,9 +226,9 @@ class AprilTagDetector(Node):
                 detection.pose.orientation.z = pose['orientation'][2]
                 detection.pose.orientation.w = pose['orientation'][3]
                 detection.corners = corners.flatten().tolist()
-                detection.size = self.tag_size
-                detection.hamming = 0
-                detection.decision_margin = 0.8
+                detection.size = float(self.tag_size)
+                detection.hamming = int(0)
+                detection.decision_margin = float(0.8)
                 detections_array.detections.append(detection)
                 cv2.polylines(vis_image, [corners.astype(int)], True, (0,255,0), 2)
 
