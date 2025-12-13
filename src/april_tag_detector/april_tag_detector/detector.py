@@ -552,19 +552,49 @@ class AprilTagDetector(Node):
     def estimate_pose_pnp(self, corners):
         if self.camera_matrix is None:
             return None
-        half_size = self.tag_size / 2
-        object_points = np.array([[-half_size, -half_size, 0],
-                                  [half_size, -half_size, 0],
-                                  [half_size, half_size, 0],
-                                  [-half_size, half_size, 0]], dtype=np.float32)
-        success, rvec, tvec = cv2.solvePnP(object_points, corners.astype(np.float32),
-                                           self.camera_matrix, self.dist_coeffs,
-                                           flags=cv2.SOLVEPNP_IPPE_SQUARE)
+
+        half = self.tag_size / 2.0
+        object_points = np.array([
+            [-half, -half, 0],
+            [ half, -half, 0],
+            [ half,  half, 0],
+            [-half,  half, 0]
+        ], dtype=np.float32)
+
+        success, rvec, tvec = cv2.solvePnP(
+            object_points,
+            corners.astype(np.float32),
+            self.camera_matrix,
+            self.dist_coeffs,
+            flags=cv2.SOLVEPNP_IPPE_SQUARE
+        )
+
         if not success:
             return None
-        R, _ = cv2.Rodrigues(rvec)
-        quat = self.rotation_matrix_to_quaternion(R)
-        return {'position': tvec.flatten(), 'orientation': quat}
+
+        R_cv, _ = cv2.Rodrigues(rvec)
+
+        # OpenCV → ROS rotation
+        R_cv_to_ros = np.array([
+            [0,  0,  1],
+            [-1, 0,  0],
+            [0, -1,  0]
+        ])
+        R_ros = R_cv_to_ros @ R_cv
+        quat = self.rotation_matrix_to_quaternion(R_ros)
+
+        # OpenCV → ROS translation
+        tvec = tvec.flatten()
+        position = np.array([
+            tvec[2],
+        -tvec[0],
+        -tvec[1]
+        ])
+
+        return {
+            'position': position,
+            'orientation': quat
+        }
 
     def rotation_matrix_to_quaternion(self, R):
         trace = np.trace(R)
