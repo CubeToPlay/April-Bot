@@ -87,6 +87,48 @@ class AprilTagDetector(Node):
         """Publishes an array of all detected AprilTags"""
         self.visualization_pub = self.create_publisher(Image, '/apriltag_detections_image', 10)
         """Publishes visualization of the AprilTags with drawn detections"""
+    
+    def decode_apriltag_6x6(self, img):
+        """
+        Universal decoder for both templates and detected tags.
+        Input: 240x240 grayscale image containing 8x8 structure (border + 6x6 data + border)
+        Output: 36-bit code (6x6 flattened array)
+        """
+        
+        # The image is 240x240, representing an 8x8 grid
+        GRID = 8
+        CELL = img.shape[0] // GRID  # 30 pixels per cell
+        
+        bits_8x8 = np.zeros((GRID, GRID), dtype=np.uint8)
+        
+        # Extract all 8x8 cells
+        margin = 3  # Small margin to avoid edge effects
+        for y in range(GRID):
+            for x in range(GRID):
+                y_start = y * CELL + margin
+                y_end = (y + 1) * CELL - margin
+                x_start = x * CELL + margin
+                x_end = (x + 1) * CELL - margin
+                
+                cell = img[max(0, y_start):min(img.shape[0], y_end),
+                        max(0, x_start):min(img.shape[1], x_end)]
+                
+                # Use median for robustness
+                mean_val = np.median(cell)
+                # Black = 1, White = 0
+                bits_8x8[y, x] = 1 if mean_val < 128 else 0
+        
+        # Normalize polarity: corners should be BLACK (1) - part of the border
+        corner_bits = [bits_8x8[0,0], bits_8x8[0,7], bits_8x8[7,0], bits_8x8[7,7]]
+        if np.mean(corner_bits) < 0.5:  # If corners are mostly white
+            bits_8x8 = 1 - bits_8x8
+        
+        # Extract inner 6x6 data region (skip the 1-cell border)
+        bits_6x6 = bits_8x8[1:7, 1:7]
+        
+        return bits_6x6.flatten()
+    
+    
     def strip_white_outline(self, img):
         """
         Crops white quiet zone from AprilTag template
@@ -172,38 +214,14 @@ class AprilTagDetector(Node):
                 image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
                 
                 if image is not None:
-                    # AprilTag images are typically 10x10 pixels with 1-pixel border
-                    # Find the inner 8x8 region (the actual tag with its white border)
-                    # Standard AprilTag images have format:
-                    # - 1 pixel outer border
-                    # - 8x8 tag (1 white border + 6x6 data grid + 1 white border)
-                    
-                    h, w = image.shape
-                    
-                    # If image is exactly 10x10, crop to inner 8x8
-                    if h == 10 and w == 10:
-                        image = image[1:9, 1:9]
-                    elif h > 10 and w > 10:
-                        # For larger images, crop to center 80%
-                        border = int(h * 0.1)
-                        image = image[border:-border, border:-border]
-                    
-                    # Resize to 240x240 for consistent processing
-                    # 240 is divisible by 6 (40 pixels per cell) and 8 (30 pixels per cell)
+                    # Resize to standard size
                     image = cv2.resize(image, (240, 240), interpolation=cv2.INTER_AREA)
                     
-                    # Binarize
+                    # Apply clean threshold
                     _, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
-                    
-                    # Ensure correct polarity (corners should be white)
-                    if np.mean([image[0,0], image[0,-1], image[-1,0], image[-1,-1]]) < 128:
-                        image = 255 - image
                     
                     self.tags[tag_id] = image
                     self.get_logger().info(f'✓ Loaded tag ID {tag_id}')
-                    
-                    # Debug save
-                    cv2.imshow(f'/tmp/tag_{tag_id}_loaded.png', image)
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     def decode_template(self, img):
@@ -266,71 +284,43 @@ class AprilTagDetector(Node):
         return out
     
     def decode_quad(self, warped):
-        """Decode a warped quad from camera - 8x8 structure"""
+        """Decode a warped quad from camera"""
         
-        # The warped image is 240x240 containing the full tag
-        # Structure: 1 black border + 6x6 data + 1 black border = 8x8 total
+        # Use the SAME decode function as templates
+        detected_code = self.decode_apriltag_6x6(warped)
+        detected_6x6 = detected_code.reshape(6, 6)
         
-        GRID = 8  # Changed from 6 to 8
-        CELL = warped.shape[0] // GRID  # Should be 30 pixels
+        self.get_logger().info(f"\nDetected 6x6 pattern:\n{detected_6x6}")
+        
+        # Show visualization
+        cv2.imshow("Warped quad", self.draw_grid(warped, grid=8))
+        cv2.waitKey(1)
 
         best_id = None
         best_score = -1
         best_rotation = -1
-        
-        bits_8x8 = np.zeros((GRID, GRID), dtype=np.uint8)
 
-        # Extract all 8x8 cells
-        margin = 3
-        for y in range(GRID):
-            for x in range(GRID):
-                y_start = y * CELL + margin
-                y_end = (y + 1) * CELL - margin
-                x_start = x * CELL + margin
-                x_end = (x + 1) * CELL - margin
-                
-                cell = warped[max(0, y_start):min(warped.shape[0], y_end),
-                            max(0, x_start):min(warped.shape[1], x_end)]
-                
-                # Use median for robustness
-                bits_8x8[y, x] = 1 if np.median(cell) < 128 else 0
-        
-        # Check polarity - corners should be BLACK (part of border)
-        corner_bits = [bits_8x8[0,0], bits_8x8[0,7], bits_8x8[7,0], bits_8x8[7,7]]
-        if np.mean(corner_bits) < 0.5:  # If corners are mostly white (0)
-            bits_8x8 = 1 - bits_8x8  # Invert
-        
-        self.get_logger().info(f"\nDetected 8x8 pattern:\n{bits_8x8}")
-        
-        # Extract inner 6x6 data region
-        bits_6x6 = bits_8x8[1:7, 1:7]
-        
-        cv2.imshow("Warped quad", self.draw_grid(warped, grid=8))
-        cv2.waitKey(1)
-
-        # Try all 4 rotations of the 6x6 data
+        # Try all 4 rotations
         for rot in range(4):
-            rotated_bits = np.rot90(bits_6x6, rot)
-            detected_code = rotated_bits.flatten()  # 36 bits
+            rotated_code = np.rot90(detected_6x6, rot).flatten()
 
             for tag_id, template in self.valid_tag_codes.items():
-                # Compare 6x6 data regions (36 bits each)
-                score = np.sum(detected_code == template)
+                # Compare the codes
+                score = np.sum(rotated_code == template)
                 
                 if score > best_score:
                     best_score = score
                     best_id = tag_id
                     best_rotation = rot
                     
-                    if score >= 30:  # If close match, log details
+                    if score >= 32:  # Close match - log details
                         self.get_logger().info(f"\nTag {tag_id} at rotation {rot}: score={score}/36")
-                        if score < 36:  # Show differences
-                            self.get_logger().info(f"Detected 6x6:\n{rotated_bits}")
-                            self.get_logger().info(f"Template 6x6:\n{template.reshape(6,6)}")
-                            diff = (detected_code != template).reshape(6,6)
+                        if score < 36:
+                            self.get_logger().info(f"Detected:\n{rotated_code.reshape(6,6)}")
+                            self.get_logger().info(f"Template:\n{template.reshape(6,6)}")
+                            diff = (rotated_code != template).reshape(6,6)
                             self.get_logger().info(f"Differences:\n{diff.astype(int)}")
 
-        # Threshold: allow some errors
         threshold = 36 - (self.max_hamming * 2)
         
         self.get_logger().info(f"\nBest: ID={best_id}, score={best_score}/36, rotation={best_rotation}, threshold={threshold}")
@@ -345,14 +335,17 @@ class AprilTagDetector(Node):
 
 
     def load_tag36h11_codes(self):
-        """Load codes as full 36-bit patterns"""
+        """Load codes using the SAME decoder as detection"""
         codes = {}
-        for tag_id, img in self.tags.items():
-            code = self.decode_template(img)  # Now returns 36 bits
-            codes[tag_id] = code
-            self.get_logger().info(f'\nTag {tag_id} code (6x6):\n{code.reshape(6,6)}')
         
-        self.get_logger().info(f"Loaded {len(codes)} tag codes (36 bits each)")
+        for tag_id, img in self.tags.items():
+            # Use the SAME decode function as we use for detected tags
+            code = self.decode_apriltag_6x6(img)
+            codes[tag_id] = code
+            
+            self.get_logger().info(f'\nTag {tag_id} template code:\n{code.reshape(6,6)}')
+        
+        self.get_logger().info(f"Loaded {len(codes)} tag codes")
         return codes
     
     def camera_info_callback(self, msg):
