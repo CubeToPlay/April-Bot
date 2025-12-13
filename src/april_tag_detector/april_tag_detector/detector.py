@@ -220,7 +220,7 @@ class AprilTagDetector(Node):
             quad = approx.reshape(4,2)
             w = np.linalg.norm(quad[0]-quad[1])
             h = np.linalg.norm(quad[0]-quad[3])
-            if w < self.min_size or h < self.min_size:
+            if w < min_size or h < min_size:
                 continue
 
             quad = self.order_points(quad)
