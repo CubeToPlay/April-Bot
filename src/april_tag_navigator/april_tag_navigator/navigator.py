@@ -172,11 +172,10 @@ class AprilTagNavigator(Node):
         if len(self.map_data) == 0:
             return False
         try:
-            return self.tf_buffer.can_transform(
-                'map',
-                'base_footprint',
+            transform = self.tf_buffer.lookup_transform(
+                'map', 'base_link',
                 rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.2)
+                timeout=rclpy.duration.Duration(seconds=0.1)
             )
         except Exception:
             return False
@@ -189,17 +188,16 @@ class AprilTagNavigator(Node):
         try:
             # Try to get the transform
             transform = self.tf_buffer.lookup_transform(
-                'map',
-                'base_footprint',
-                rclpy.time.Time(),  # Get latest
-                timeout=rclpy.duration.Duration(seconds=0.5)
+                'map', 'base_link',
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.1)
             )
             
             self.get_logger().info(
                 f'Map received: {self.map_width}x{self.map_height} cells'
             )
             self.get_logger().info(
-                f'TF ready: map->base_footprint transform available'
+                f'TF ready: map->base_link transform available'
             )
             self.get_logger().info('Starting navigation system!')
             
@@ -209,7 +207,7 @@ class AprilTagNavigator(Node):
             
         except TransformException as ex:
             self.get_logger().info(
-                f'Waiting for map->base_footprint TF... )', 
+                f'Waiting for map->base_link TF... )', 
                 throttle_duration_sec=2.0
             )
             self.get_logger().debug(f'TF error: {ex}')
