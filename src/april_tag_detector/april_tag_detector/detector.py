@@ -255,9 +255,8 @@ class AprilTagDetector(Node):
                 
         if best_score >= threshold:
             # Show visualization - now should show clean black/white cells
-            cv2.imshow("Warped quad", self.draw_grid(warped, grid=8))
+            cv2.imshow(f"Tag {best_id}", self.draw_grid(warped, grid=8))
             cv2.waitKey(1)
-            self.get_logger().info(f"MATCHED TAG {best_id}")
             return best_id
         
         return None
