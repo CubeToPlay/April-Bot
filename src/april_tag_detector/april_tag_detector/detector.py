@@ -294,13 +294,14 @@ class AprilTagDetector(Node):
             return detected_tags, image
 
         for i, cnt in enumerate(contours):
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
             area = cv2.contourArea(cnt)
             if area < 800:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
-            peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+            
             # DEBUG: draw every quad candidate in BLUE
             cv2.polylines(
                 debug_image,
