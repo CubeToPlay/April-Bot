@@ -9,14 +9,11 @@
     <link name="base_link">
       <pose>0 0 0.0715 0 0 0</pose>
       <inertial>
-        <mass>1.0</mass>
+        <mass>2.5</mass>
         <inertia>
-          <ixx>0.001</ixx>
-          <ixy>0.0</ixy>
-          <ixz>0.0</ixz>
-          <iyy>0.001</iyy>
-          <iyz>0.0</iyz>
-          <izz>0.001</izz>
+          <ixx>0.03</ixx>
+          <iyy>0.03</iyy>
+          <izz>0.05</izz>
         </inertia>
       </inertial>
       
@@ -28,8 +25,8 @@
         </geometry>
         <surface>
             <contact>
-                <stiffness>100000</stiffness>
-                <damping>80</damping>
+                <stiffness>10000</stiffness>
+                <damping>200</damping>
                 <bounce>
                 <restitution_coefficient>0.0</restitution_coefficient>
                 <threshold>0.0</threshold>
@@ -39,7 +36,6 @@
                 <ode>
                 <mu>1.0</mu>
                 <mu2>1.0</mu2>
-                <fdir1>0 0 1</fdir1>
                 </ode>
             </friction>
         </surface>
@@ -83,8 +79,8 @@
         </geometry>
         <surface>
             <contact>
-                <stiffness>100000</stiffness>
-                <damping>80</damping>
+                <stiffness>10000</stiffness>
+                <damping>200</damping>
                 <bounce>
                 <restitution_coefficient>0.0</restitution_coefficient>
                 <threshold>0.0</threshold>
@@ -94,7 +90,6 @@
                 <ode>
                 <mu>1.0</mu>
                 <mu2>1.0</mu2>
-                <fdir1>0 0 1</fdir1>
                 </ode>
             </friction>
         </surface>
@@ -139,8 +134,8 @@
         </geometry>
         <surface>
             <contact>
-                <stiffness>100000</stiffness>
-                <damping>80</damping>
+                <stiffness>10000</stiffness>
+                <damping>200</damping>
                 <bounce>
                 <restitution_coefficient>0.0</restitution_coefficient>
                 <threshold>0.0</threshold>
@@ -150,7 +145,6 @@
                 <ode>
                 <mu>1.0</mu>
                 <mu2>1.0</mu2>
-                <fdir1>0 0 1</fdir1>
                 </ode>
             </friction>
         </surface>
@@ -175,7 +169,7 @@
     <link name="caster_back_link">
       <pose>-0.060 0 0.0 0 0 0</pose>
       <inertial>
-        <mass>0.01</mass>
+        <mass>0.05</mass>
         <inertia>
           <ixx>0.00001</ixx>
           <ixy>0.0</ixy>
@@ -189,7 +183,7 @@
       <visual name="wheel_right_visual">
         <geometry>
           <sphere>
-            <radius>0.005</radius>
+            <radius>0.015</radius>
           </sphere>
         </geometry>
         <material>
@@ -202,13 +196,13 @@
       <collision name="caster_collision">
         <geometry>
           <sphere>
-            <radius>0.005</radius>
+            <radius>0.015</radius>
           </sphere>
         </geometry>
         <surface>
             <contact>
-                <stiffness>100000</stiffness>
-                <damping>80</damping>
+                <stiffness>10000</stiffness>
+                <damping>200</damping>
                 <bounce>
                 <restitution_coefficient>0.0</restitution_coefficient>
                 <threshold>0.0</threshold>
@@ -218,7 +212,6 @@
                 <ode>
                 <mu>1.0</mu>
                 <mu2>1.0</mu2>
-                <fdir1>0 0 1</fdir1>
                 </ode>
             </friction>
         </surface>
@@ -249,8 +242,8 @@
         </geometry>
         <surface>
             <contact>
-                <stiffness>100000</stiffness>
-                <damping>80</damping>
+                <stiffness>10000</stiffness>
+                <damping>200</damping>
                 <bounce>
                 <restitution_coefficient>0.0</restitution_coefficient>
                 <threshold>0.0</threshold>
@@ -260,7 +253,6 @@
                 <ode>
                 <mu>1.0</mu>
                 <mu2>1.0</mu2>
-                <fdir1>0 0 1</fdir1>
                 </ode>
             </friction>
         </surface>
