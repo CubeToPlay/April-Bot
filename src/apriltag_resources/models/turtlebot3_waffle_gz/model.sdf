@@ -304,24 +304,43 @@
     <joint name="wheel_left_joint" type="revolute">
       <parent>base_link</parent>
       <child>wheel_left_link</child>
-      <pose>0 0 0 1.5708 0 0</pose>
       <axis>
-        <xyz>0 -1 0</xyz>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-1e16</lower>
+          <upper>1e16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.1</damping>
+        </dynamics>
       </axis>
     </joint>
 
     <joint name="wheel_right_joint" type="revolute">
       <parent>base_link</parent>
       <child>wheel_right_link</child>
-      <pose>0 0 0 1.5708 0 0</pose>
       <axis>
-        <xyz>0 -1 0</xyz>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-1e16</lower>
+          <upper>1e16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.1</damping>
+        </dynamics>
       </axis>
     </joint>
 
     <joint name="caster_joint" type="ball">
       <parent>base_link</parent>
       <child>caster_back_link</child>
+    </joint>
+
+    <link name="base_footprint"/>
+
+    <joint name="base_footprint_joint" type="fixed">
+      <parent>base_footprint</parent>
+      <child>base_link</child>
     </joint>
 
     <!-- ================= DIFF DRIVE ================= -->
@@ -335,7 +354,7 @@
       <topic>/cmd_vel</topic>
       <odom_topic>/odom</odom_topic>
       <frame_id>odom</frame_id>
-      <child_frame_id>base_link</child_frame_id>
+      <child_frame_id>base_footprint</child_frame_id>
     </plugin>
 
     <!-- Pose Publisher -->
