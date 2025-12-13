@@ -152,11 +152,6 @@ class AprilTagDetector(Node):
         self.get_logger().info(f'Verifying {len(self.tags)} templates...')
         
         for tag_id, img in self.tags.items():
-            # Show 8x8 grid overlay
-            grid_img = self.draw_grid(img, grid=8)
-            grid_filename = os.path.join(output_dir, f'tag_{tag_id}_grid_8x8.png')
-            cv2.imshow(grid_filename, grid_img)
-            
             # Decode the 6x6 data region
             bits = self.valid_tag_codes[tag_id]
             bits_2d = bits.reshape(6, 6)
@@ -175,22 +170,6 @@ class AprilTagDetector(Node):
                     cv2.putText(bit_vis, str(bits_2d[y, x]),
                             (x*cell_size + 35, y*cell_size + 60),
                             cv2.FONT_HERSHEY_SIMPLEX, 1.2, text_color, 2)
-            
-            bit_filename = os.path.join(output_dir, f'tag_{tag_id}_bits_6x6.png')
-            cv2.imshow(bit_filename, bit_vis)
-            
-            # Create comparison showing structure
-            img_resized = cv2.resize(img, (600, 600), interpolation=cv2.INTER_NEAREST)
-            grid_resized = cv2.resize(grid_img, (600, 600), interpolation=cv2.INTER_NEAREST)
-            
-            comparison = np.hstack([
-                cv2.cvtColor(img_resized, cv2.COLOR_GRAY2BGR) if len(img_resized.shape) == 2 else img_resized,
-                grid_resized,
-                cv2.cvtColor(bit_vis, cv2.COLOR_GRAY2BGR)
-            ])
-            
-            comp_filename = os.path.join(output_dir, f'tag_{tag_id}_comparison.png')
-            cv2.imshow(comp_filename, comparison)
             
             self.get_logger().info(f'Tag {tag_id} 6x6 data:\n{bits_2d}')
         
