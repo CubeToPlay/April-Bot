@@ -113,7 +113,7 @@ class AprilTagDetector(Node):
             # Create a visualization with grid
             grid_img = self.draw_grid(img, grid=6)
             grid_filename = os.path.join(output_dir, f'tag_{tag_id}_grid.png')
-            cv2.imwrite(grid_filename, grid_img)
+            cv2.imshow(grid_filename, grid_img)
             
             # Decode and visualize bits (6x6 now)
             bits = self.valid_tag_codes[tag_id]
@@ -135,7 +135,7 @@ class AprilTagDetector(Node):
                             cv2.FONT_HERSHEY_SIMPLEX, 1.2, text_color, 2)
             
             bit_filename = os.path.join(output_dir, f'tag_{tag_id}_bits.png')
-            cv2.imwrite(bit_filename, bit_vis)
+            cv2.imshow(bit_filename, bit_vis)
             
             self.get_logger().info(f'Tag {tag_id} 6x6 bits:\n{bits_2d}')
         
