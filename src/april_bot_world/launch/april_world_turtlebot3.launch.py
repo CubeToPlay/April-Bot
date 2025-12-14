@@ -162,15 +162,15 @@ def generate_launch_description():
                       '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
             parameters=[{'use_sim_time': True}]
         ),
-        Node(
-            package='april_bot_world',
-            executable='odom_to_tf',
-            name='odom_to_tf',
-            parameters=[{
-                'use_sim_time': True,
-            }],
-            output='screen'
-        ),
+        # Node(
+        #     package='april_bot_world',
+        #     executable='odom_to_tf',
+        #     name='odom_to_tf',
+        #     parameters=[{
+        #         'use_sim_time': True,
+        #     }],
+        #     output='screen'
+        # ),
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
             package='ros_gz_bridge',

@@ -642,16 +642,6 @@ class AprilTagNavigator(Node):
         """Main control loop"""
         twist = Twist()
 
-        if self.laser_ranges is not None:
-            if np.min(self.laser_ranges[0:10].tolist() +
-                    self.laser_ranges[-10:].tolist()) < 0.4:
-                self.get_logger().warn("Obstacle too close — replanning")
-                self.state = NavigationState.PLANNING
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
-                self.cmd_vel_pub.publish(twist)
-                return
-
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
             twist.linear.x = 0.0
