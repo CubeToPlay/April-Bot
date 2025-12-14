@@ -63,7 +63,7 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'use_sim_time: {use_sim}')
         except:
             self.get_logger().warn('use_sim_time not set!')
-        self.tf_buffer = Buffer(cache_time=rclpy.duration.Duration(seconds=10.0))
+        self.tf_buffer = Buffer(cache_time=rclpy.duration.Duration(seconds=30.0))
         """Stores the last set of transformations"""
         self.tf_listener = TransformListener(self.tf_buffer, self)
         """Receives and stores transforms that were published on the /tf topic"""
@@ -309,10 +309,13 @@ class AprilTagNavigator(Node):
     def update_robot_pose(self):
         """Get robot pose from SLAM"""
         try:
+            # Get the latest available transform
+            # Don't specify time - just get latest
             transform = self.tf_buffer.lookup_transform(
-                'map', 'base_footprint',
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
+                'map', 
+                'base_footprint',
+                rclpy.time.Time(),  # Latest
+                timeout=rclpy.duration.Duration(seconds=1.0)
             )
             
             self.robot_pose = {
@@ -320,37 +323,22 @@ class AprilTagNavigator(Node):
                 'y': transform.transform.translation.y,
                 'orientation': transform.transform.rotation
             }
-            self.get_logger().info(
-                f"Pose: ({self.robot_pose['x']:.2f}, {self.robot_pose['y']:.2f})",
-                throttle_duration_sec=2.0
-            )
+            
+            # Only log if position actually changed
+            if not hasattr(self, 'last_logged_pose') or \
+            abs(self.robot_pose['x'] - self.last_logged_pose.get('x', 0)) > 0.01 or \
+            abs(self.robot_pose['y'] - self.last_logged_pose.get('y', 0)) > 0.01:
+                
+                self.get_logger().info(
+                    f"Pose: ({self.robot_pose['x']:.2f}, {self.robot_pose['y']:.2f})"
+                )
+                self.last_logged_pose = self.robot_pose.copy()
+                
         except TransformException as ex:
             self.get_logger().warn(
-                f'Could not transform map to base_footprint: {ex}',
-                throttle_duration_sec=5.0
+                f'TF lookup failed: {str(ex)[:100]}',
+                throttle_duration_sec=2.0
             )
-            try:
-                # Check if odom->base_footprint exists (should be from Gazebo)
-                transform = self.tf_buffer.lookup_transform(
-                    'odom', 'base_footprint',
-                    rclpy.time.Time(),
-                    timeout=rclpy.duration.Duration(seconds=0.5)
-                )
-                self.robot_pose = {
-                    'x': transform.transform.translation.x,
-                    'y': transform.transform.translation.y,
-                    'orientation': transform.transform.rotation
-                }
-                self.get_logger().info(
-                    'Using odom frame (SLAM not ready yet)',
-                    throttle_duration_sec=5.0
-                )
-                
-            except TransformException as ex:
-                self.get_logger().warn(
-                    f'Could not get robot pose: {ex}',
-                    throttle_duration_sec=5.0
-                )
     
     def map_callback(self, msg):
         """Store SLAM map

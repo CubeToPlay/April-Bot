@@ -11,7 +11,7 @@ slam_toolbox:
     # ROS Parameters
     odom_frame: odom
     map_frame: map
-    base_frame: base_footprint  # or base_link if that's what your robot uses
+    base_frame: base_footprint
     scan_topic: /scan
     use_map_saver: true
     mode: mapping  # or localization

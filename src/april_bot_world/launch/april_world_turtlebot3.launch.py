@@ -130,14 +130,14 @@ def generate_launch_description():
         #     parameters=[{'use_sim_time': True}]
         # ),
         # Static transform: odom -> base_footprint (backup)
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='odom_to_base_footprint_backup',
-            output='screen',
-            arguments=['--frame-id', 'odom', '--child-frame-id', 'base_footprint'],
-            parameters=[{'use_sim_time': True}]
-        ),
+        # Node(
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     name='odom_to_base_footprint_backup',
+        #     output='screen',
+        #     arguments=['--frame-id', 'odom', '--child-frame-id', 'base_footprint'],
+        #     parameters=[{'use_sim_time': True}]
+        # ),
         
         # Static transform: base_footprint -> base_scan
         Node(
@@ -162,6 +162,15 @@ def generate_launch_description():
                       '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
             parameters=[{'use_sim_time': True}]
         ),
+        Node(
+            package='robot_localization',
+            executable='odom_to_tf_node',
+            name='odom_to_tf',
+            parameters=[{
+                'use_sim_time': True,
+            }],
+            output='screen'
+        ),
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
             package='ros_gz_bridge',
@@ -170,11 +179,11 @@ def generate_launch_description():
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
                 '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+                '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
                 '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-                '/odom@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-                '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
-                '/tf_static@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+                '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                # '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
+                # '/tf_static@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             ],
             remappings=[
                 ('/camera/image_raw', '/camera/image_raw'),
