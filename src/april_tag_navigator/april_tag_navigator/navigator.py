@@ -833,13 +833,13 @@ class AprilTagNavigator(Node):
                 path_found = False
                 for i, frontier in enumerate(frontiers[:5]):  # Try top 5 closest
                     self.get_logger().info(
-                        f'Trying frontier {i+1}: ({frontier[0]:.2f}, {frontier[1]:.2f})',
+                        f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
                         throttle_duration_sec=1.0
                     )
                     
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
-                        frontier[0], frontier[1]
+                        frontier[1], frontier[2]
                     )
                     
                     if self.current_path:
