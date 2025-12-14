@@ -636,7 +636,6 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
-        self.spin_start_time = self.get_clock().now()
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
@@ -696,15 +695,7 @@ class AprilTagNavigator(Node):
                 if self.target_tag_id in self.discovered_tags:
                     self.state = NavigationState.TRACKING
                 else:
-                    # Spin to look for tag
-                    twist.linear.x = 0.0
-                    twist.angular.z = 0.3  # Reduced from 0.4 for smoother spin
-                    self.cmd_vel_pub.publish(twist)
-                    
-                    # Replan after spinning
-                    if (self.get_clock().now() - self.spin_start_time).nanoseconds > 3e9:  # 3 seconds
-                        self.spin_start_time = self.get_clock().now()
-                        self.state = NavigationState.PLANNING
+                    self.state = NavigationState.PLANNING
                 return
             
             # Robot should determine the distance and angle to the next waypoint and move towards it.
