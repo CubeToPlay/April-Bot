@@ -353,8 +353,6 @@ class AprilTagNavigator(Node):
         }
         self.map_width = msg.info.width
         self.map_height = msg.info.height
-        if self.state == NavigationState.NAVIGATING:
-            self.state = NavigationState.PLANNING
 
     def scan_callback(self, msg):
         """Process LiDAR"""
