@@ -264,20 +264,6 @@ class AprilTagNavigator(Node):
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
     
-
-    def project_tag_to_wall(self, robot_x, robot_y, yaw, tag_angle):
-        step = self.map_resolution
-        max_dist = 5.0
-
-        for d in np.arange(0.3, max_dist, step):
-            x = robot_x + d * math.cos(yaw + tag_angle)
-            y = robot_y + d * math.sin(yaw + tag_angle)
-
-            mx, my = self.world_to_map(x, y)
-            if not self.is_free(mx, my):
-                return x, y
-
-        return None
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
 
@@ -289,56 +275,110 @@ class AprilTagNavigator(Node):
         for detection in msg.detections:
             # Get tag_id and then add it to the current_detections with its pose
             tag_id = detection.id
-            if tag_id in self.discovered_tags:
-                continue
+            tag_frame = f"apriltag_{tag_id}"
             pose = detection.pose
-
-            q = self.robot_pose['orientation']
-            yaw = math.atan2(
-                2.0 * (q.w * q.z + q.x * q.y),
-                1.0 - 2.0 * (q.y*q.y + q.z*q.z)
-            )
-
-            tag_angle = math.atan2(pose.position.y, pose.position.x)
-
-            projected = self.project_tag_to_wall(
-                self.robot_pose['x'],
-                self.robot_pose['y'],
-                yaw,
-                tag_angle
-            )
-
-            if projected is None:
-                self.get_logger().info(
-                    f"Tag {tag_id}: no wall hit, ignoring"
-                )
-                continue
-            x, y = projected
-
-            mx, my = self.world_to_map(x, y)
-            if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
-                continue
-
-            cell = self.map_data[my, mx]
-            if cell < 50:   # not a wall
-                continue
-            
             self.current_detections[tag_id] = {
-                'pose': detection.pose
+                'pose': pose
             }
-            self.discovered_tags[tag_id] = {
-                'x': x,
-                'y': y,
-                'z': 0.0
-            }
-            # If the seen tag is the target AprilTag, mark it as seen and calculate the distance and angle to the target tag in order to update the state to TRACKING
+
+            try:
+                transform = self.tf_buffer.lookup_transform(
+                    'map',
+                    tag_frame,
+                    rclpy.time.Time(),
+                    timeout=rclpy.duration.Duration(seconds=0.2)
+                )
+                tag_x = transform.transform.translation.x
+                tag_y = transform.transform.translation.y
+                tag_z = transform.transform.translation.z
+                if tag_id not in self.discovered_tags:
+                    self.discovered_tags[tag_id] = {
+                        'x': tag_x,
+                        'y': tag_y,
+                        'z': tag_z
+                    }
+                    self.get_logger().info(
+                        f'Discovered Tag {tag_id} at map coordinates '
+                        f'({tag_x:.2f}, {tag_y:.2f})'
+                    )
+                else:
+                    # Smooth update using moving average
+                    alpha = 0.3
+                    old = self.discovered_tags[tag_id]
+                    self.discovered_tags[tag_id] = {
+                        'x': alpha * tag_x + (1 - alpha) * old['x'],
+                        'y': alpha * tag_y + (1 - alpha) * old['y'],
+                        'z': alpha * tag_z + (1 - alpha) * old['z']
+                    }
+                
+                self.get_logger().info(
+                    f'Tag {tag_id}: map=({self.discovered_tags[tag_id]["x"]:.2f}, '
+                    f'{self.discovered_tags[tag_id]["y"]:.2f})',
+                    throttle_duration_sec=2.0
+                )
+                
+            except TransformException as ex:
+                # Fallback: Calculate from robot pose + camera frame detection
+                # This is less accurate but works when TF is unavailable
+                self.get_logger().debug(f'TF failed for tag {tag_id}, using fallback: {ex}')
+                
+                # Get robot orientation
+                q = self.robot_pose['orientation']
+                robot_yaw = math.atan2(
+                    2.0 * (q.w * q.z + q.x * q.y),
+                    1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+                )
+                
+                # Tag position in camera frame
+                # Camera frame: Z forward, X right, Y down
+                # We need: distance and angle
+                tag_dist_camera = math.sqrt(
+                    pose.position.x**2 + 
+                    pose.position.y**2 + 
+                    pose.position.z**2
+                )
+                
+                # Angle from camera Z axis (forward)
+                angle_camera = math.atan2(pose.position.x, pose.position.z)
+                
+                # Transform to map frame
+                # Assuming camera points in same direction as robot
+                tag_angle_map = robot_yaw + angle_camera
+                
+                tag_x = self.robot_pose['x'] + tag_dist_camera * math.cos(tag_angle_map)
+                tag_y = self.robot_pose['y'] + tag_dist_camera * math.sin(tag_angle_map)
+                
+                if tag_id not in self.discovered_tags:
+                    self.discovered_tags[tag_id] = {
+                        'x': tag_x,
+                        'y': tag_y,
+                        'z': 0.0
+                    }
+            
+            # Update tracking info for target tag
             if tag_id == self.target_tag_id:
                 seen_target = True
-                pose = detection.pose
-                dx = x - self.robot_pose['x']
-                dy = y - self.robot_pose['y']
-                self.target_tag_distance = math.hypot(dx, dy)
-                self.target_tag_angle = tag_angle
+                
+                # Use CAMERA FRAME for tracking (for visual servoing)
+                self.target_tag_distance = math.sqrt(
+                    pose.position.x**2 + 
+                    pose.position.y**2 + 
+                    pose.position.z**2
+                )
+                
+                # Angle in camera frame (degrees)
+                # X is left/right, Z is forward
+                self.target_tag_angle = math.degrees(
+                    math.atan2(pose.position.x, pose.position.z)
+                )
+                
+                self.get_logger().info(
+                    f'Tracking target {tag_id}: '
+                    f'dist={self.target_tag_distance:.2f}m, '
+                    f'angle={self.target_tag_angle:.1f}°',
+                    throttle_duration_sec=1.0
+                )
+        
         self.target_tag_visible = seen_target
 
     def update_robot_pose(self):
@@ -643,7 +683,7 @@ class AprilTagNavigator(Node):
             throttle_duration_sec=2.0
         )
         
-        return {'x': candidates[0][1], 'y': candidates[0][2]}
+        return candidates[:5]
     
     def publish_path(self, path):
         """Publish path for visualization
@@ -785,21 +825,37 @@ class AprilTagNavigator(Node):
                     self.state = NavigationState.IDLE
             else:
                 # The tag is unknown, so the PLANNING state will run A* from the current position to the closes unexplored location
-                self.frontier_target = self.find_frontier()
-                if self.frontier_target:
+                frontiers = self.find_frontier()
+                if not frontiers:
+                    self.get_logger().warning('No frontiers found, staying idle')
+                    self.state = NavigationState.IDLE
+                    return
+                path_found = False
+                for i, frontier in enumerate(frontiers[:5]):  # Try top 5 closest
+                    self.get_logger().info(
+                        f'Trying frontier {i+1}: ({frontier["x"]:.2f}, {frontier["y"]:.2f})',
+                        throttle_duration_sec=1.0
+                    )
+                    
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
-                        self.frontier_target['x'], self.frontier_target['y']
+                        frontier['x'], frontier['y']
                     )
                     
                     if self.current_path:
+                        self.frontier_target = frontier
                         self.path_index = 0
                         self.state = NavigationState.NAVIGATING
                         self.publish_path(self.current_path)
-                        self.get_logger().info('Exploring frontier')
-                else:
-                    self.get_logger().warning('No frontier found')
-                    self.state = NavigationState.PLANNING
+                        self.get_logger().info(
+                            f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
+                        )
+                        path_found = True
+                        break
+                
+                if not path_found:
+                    self.get_logger().warning('No reachable frontier found, staying idle')
+                    self.state = NavigationState.IDLE
 
         elif self.state == NavigationState.NAVIGATING:
             # If the target tag is visible, then the robot should start TRACKING the tag and move directly to it.
