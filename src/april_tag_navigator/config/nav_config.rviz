@@ -193,7 +193,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /camera/image_throttled
+        Value: /camera/image_raw
       Value: true
       Visibility:
         AprilTag Markers: true
