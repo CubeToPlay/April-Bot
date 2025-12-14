@@ -833,7 +833,7 @@ class AprilTagNavigator(Node):
                 path_found = False
                 for i, frontier in enumerate(frontiers[:5]):  # Try top 5 closest
                     self.get_logger().info(
-                        f'Trying frontier {i+1}: ({frontier["x"]:.2f}, {frontier["y"]:.2f})',
+                        f'Trying frontier {i+1}: ({frontier[0]:.2f}, {frontier[1]:.2f})',
                         throttle_duration_sec=1.0
                     )
                     
