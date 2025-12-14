@@ -54,7 +54,7 @@ setup(
     entry_points={
         'console_scripts': [
             'odom_to_tf = april_bot_world.odom_to_tf:main',
-            'scan_inf_fixer = april_bot_world.scanInfFixer:main'
+            'scan_inf_fixer = april_bot_world.scan_inf_fixer:main'
         ],
     },
 )
