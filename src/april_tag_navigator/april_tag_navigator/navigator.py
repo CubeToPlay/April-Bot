@@ -261,51 +261,81 @@ class AprilTagNavigator(Node):
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
     
+
+    def project_tag_to_wall(self, robot_x, robot_y, yaw, tag_angle):
+        step = self.map_resolution
+        max_dist = 5.0
+
+        for d in np.arange(0.3, max_dist, step):
+            x = robot_x + d * math.cos(yaw + tag_angle)
+            y = robot_y + d * math.sin(yaw + tag_angle)
+
+            mx, my = self.world_to_map(x, y)
+            if not self.is_free(mx, my):
+                return x, y
+
+        return None
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
 
+        if self.map_data is None or self.robot_pose is None:
+            return
         # Need to clear out all perviously seen tags before listing the newly seen ones
         self.current_detections = {}
         seen_target = False
         for detection in msg.detections:
             # Get tag_id and then add it to the current_detections with its pose
             tag_id = detection.id
-            tag_frame = f"apriltag_{tag_id}"
+            if tag_id in self.discovered_tags:
+                continue
+            pose = detection.pose.pose.pose
+
+            q = self.robot_pose['q']
+            yaw = math.atan2(
+                2.0 * (q.w * q.z + q.x * q.y),
+                1.0 - 2.0 * (q.y*q.y + q.z*q.z)
+            )
+
+            tag_angle = math.atan2(pose.position.y, pose.position.x)
+
+            projected = self.project_tag_to_wall(
+                self.robot_pose['x'],
+                self.robot_pose['y'],
+                yaw,
+                tag_angle
+            )
+
+            if projected is None:
+                self.get_logger().info(
+                    f"Tag {tag_id}: no wall hit, ignoring"
+                )
+                continue
+            x, y = projected
+
+            mx, my = self.world_to_map(x, y)
+            if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
+                continue
+
+            cell = self.map_data[my, mx]
+            if cell < 50:   # not a wall
+                continue
+            
             self.current_detections[tag_id] = {
                 'pose': detection.pose
             }
-            try:
-                # Use tf in order to fine the [x,y,z] coordinates for the seen AprilTag
-                transform = self.tf_buffer.lookup_transform(
-                'map', tag_frame,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
-                )
-                
-                # Store in database
-                self.discovered_tags[tag_id] = {
-                    'x': transform.transform.translation.x,
-                    'y': transform.transform.translation.y,
-                    'z': transform.transform.translation.z
-                }
-                
-                # Print the [x,y] location of the AprilTag
-                self.get_logger().info(
-                    f'Tag {tag_id} at ({transform.transform.translation.x:.2f}, '
-                    f'{transform.transform.translation.y:.2f})',
-                    throttle_duration_sec=2.0
-                )
-
-            except TransformException:
-                pass
+            self.discovered_tags[tag_id] = {
+                'x': x,
+                'y': y,
+                'z': 0.0
+            }
             # If the seen tag is the target AprilTag, mark it as seen and calculate the distance and angle to the target tag in order to update the state to TRACKING
             if tag_id == self.target_tag_id:
                 seen_target = True
                 pose = detection.pose
                 self.target_tag_distance = math.sqrt(
-                    pose.position.x**2 + pose.position.y**2 + pose.position.z**2
+                    x**2 + y**2 + 0.0**2
                 )
-                self.target_tag_angle = math.degrees(math.atan2(pose.position.y, pose.position.x))
+                self.target_tag_angle = tag_angle
         self.target_tag_visible = seen_target
 
     def update_robot_pose(self):
