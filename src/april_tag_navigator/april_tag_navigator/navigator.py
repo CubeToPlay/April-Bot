@@ -288,7 +288,7 @@ class AprilTagNavigator(Node):
             tag_id = detection.id
             if tag_id in self.discovered_tags:
                 continue
-            pose = detection.pose.pose
+            pose = detection.pose
 
             q = self.robot_pose['q']
             yaw = math.atan2(
