@@ -330,6 +330,20 @@ class AprilTagNavigator(Node):
                 'pose': pose
             }
 
+            # Get robot orientation
+            q = self.robot_pose['orientation']
+            robot_yaw = math.atan2(
+                2.0 * (q.w * q.z + q.x * q.y),
+                1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+            )
+
+            # Angle from camera Z axis (forward)
+            angle_camera = math.atan2(pose.position.x, pose.position.z)
+            
+            # Transform to map frame
+            # Assuming camera points in same direction as robot
+            tag_angle_map = robot_yaw + angle_camera
+
             try:
                 transform = self.tf_buffer.lookup_transform(
                     'map',
@@ -376,12 +390,6 @@ class AprilTagNavigator(Node):
                 # This is less accurate but works when TF is unavailable
                 self.get_logger().debug(f'TF failed for tag {tag_id}, using fallback: {ex}')
                 
-                # Get robot orientation
-                q = self.robot_pose['orientation']
-                robot_yaw = math.atan2(
-                    2.0 * (q.w * q.z + q.x * q.y),
-                    1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-                )
                 
                 # Tag position in camera frame
                 # Camera frame: Z forward, X right, Y down
@@ -391,13 +399,6 @@ class AprilTagNavigator(Node):
                     pose.position.y**2 + 
                     pose.position.z**2
                 )
-                
-                # Angle from camera Z axis (forward)
-                angle_camera = math.atan2(pose.position.x, pose.position.z)
-                
-                # Transform to map frame
-                # Assuming camera points in same direction as robot
-                tag_angle_map = robot_yaw + angle_camera
                 
                 tag_x = self.robot_pose['x'] + tag_dist_camera * math.cos(tag_angle_map)
                 tag_y = self.robot_pose['y'] + tag_dist_camera * math.sin(tag_angle_map)
