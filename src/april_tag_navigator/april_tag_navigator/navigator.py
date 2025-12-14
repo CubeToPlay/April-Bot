@@ -294,6 +294,25 @@ class AprilTagNavigator(Node):
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
     
+    def raycast_to_wall(self, x0, y0, angle, max_range=5.0, step=0.05):
+        """Cast a ray until it hits a wall"""
+        dist = 0.0
+        while dist < max_range:
+            x = x0 + dist * math.cos(angle)
+            y = y0 + dist * math.sin(angle)
+
+            mx, my = self.world_to_map(x, y)
+            if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
+                return None
+
+            if self.map_data[my, mx] >= 50:  # wall hit
+                return x - 0.05 * math.cos(angle), y - 0.05 * math.sin(angle)
+
+            dist += step
+
+        return None
+
+
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
 
@@ -318,14 +337,19 @@ class AprilTagNavigator(Node):
                     rclpy.time.Time(),
                     timeout=rclpy.duration.Duration(seconds=0.2)
                 )
-                tag_x = transform.transform.translation.x
-                tag_y = transform.transform.translation.y
-                tag_z = transform.transform.translation.z
+                hit = self.raycast_to_wall(
+                    self.robot_pose['x'],
+                    self.robot_pose['y'],
+                    tag_angle_map
+                )
+                if hit is None:
+                    return
+                tag_x, tag_y = hit
                 if tag_id not in self.discovered_tags:
                     self.discovered_tags[tag_id] = {
                         'x': tag_x,
                         'y': tag_y,
-                        'z': tag_z
+                        'z': 0.0
                     }
                     self.get_logger().info(
                         f'Discovered Tag {tag_id} at map coordinates '
@@ -338,7 +362,7 @@ class AprilTagNavigator(Node):
                     self.discovered_tags[tag_id] = {
                         'x': alpha * tag_x + (1 - alpha) * old['x'],
                         'y': alpha * tag_y + (1 - alpha) * old['y'],
-                        'z': alpha * tag_z + (1 - alpha) * old['z']
+                        'z': alpha * 0.0 + (1 - alpha) * old['z']
                     }
                 
                 self.get_logger().info(
