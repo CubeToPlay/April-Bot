@@ -35,8 +35,8 @@ class AprilTagNavigator(Node):
 
         # Parameters
         self.declare_parameter('approach_distance', 0.5)
-        self.declare_parameter('linear_speed', 0.2)
-        self.declare_parameter('angular_speed', 0.5)
+        self.declare_parameter('linear_speed', 0.5)
+        self.declare_parameter('angular_speed', 0.8)
         self.declare_parameter('waypoint_tolerance', 0.3)
         self.declare_parameter('tag_database_path', 'discovered_tags.json')
         self.declare_parameter('frontier_grid_size', 0.5)
@@ -59,6 +59,9 @@ class AprilTagNavigator(Node):
         self.cancel_command = self.get_parameter('cancel_command').value
         """When goal_id = 11, it means that the current search should be cancelled and the robot should be idle."""
 
+        self.map_pause_active = False
+        self.map_pause_end_time = None
+        self.map_pause_duration = 0.8
         # TF2 for SLAM localization
         try:
             use_sim = self.get_parameter('use_sim_time').value
@@ -377,14 +380,43 @@ class AprilTagNavigator(Node):
         The map metadata (width, height, resolution, etc.) is stored in order for coordinate conversions (between map and world)
         """
         # Convert the flat array to 2D grid. 
+        new_width = msg.info.width
+        new_height = msg.info.height
+
+        resized = (
+                self.map_width != 0 and
+                (new_width != self.map_width or new_height != self.map_height)
+            )
+
         self.map_data = np.array(msg.data).reshape((msg.info.height, msg.info.width))
         self.map_resolution = msg.info.resolution
         self.map_origin = {
             'x': msg.info.origin.position.x,
             'y': msg.info.origin.position.y
         }
-        self.map_width = msg.info.width
-        self.map_height = msg.info.height
+        self.map_width = new_width
+        self.map_height = new_height
+        if resized:
+            self.get_logger().warn(
+                f"Map resized to {new_width}x{new_height}, pausing navigation",
+                throttle_duration_sec=2.0
+            )
+            self.map_pause_active = True
+            self.map_pause_end_time = (
+                self.get_clock().now().nanoseconds / 1e9
+                + self.map_pause_duration
+            )
+
+            # Stop immediately
+            stop = Twist()
+            self.cmd_vel_pub.publish(stop)
+
+            # Force replanning
+            if self.state in (
+                NavigationState.NAVIGATING,
+                NavigationState.TRACKING
+            ):
+                self.state = NavigationState.PLANNING
 
     def scan_callback(self, msg):
         """Process LiDAR"""
@@ -702,6 +734,15 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
+        now = self.get_clock().now().nanoseconds / 1e9
+        if self.map_pause_active:
+            if now < self.map_pause_end_time:
+                # Hold still
+                self.cmd_vel_pub.publish(twist)
+                return
+            else:
+                self.map_pause_active = False
+                self.get_logger().info("Map stabilized, resuming navigation")
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
