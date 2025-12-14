@@ -163,8 +163,8 @@ def generate_launch_description():
             parameters=[{'use_sim_time': True}]
         ),
         Node(
-            package='robot_localization',
-            executable='odom_to_tf_node',
+            package='april_bot_world',
+            executable='odom_to_tf',
             name='odom_to_tf',
             parameters=[{
                 'use_sim_time': True,
