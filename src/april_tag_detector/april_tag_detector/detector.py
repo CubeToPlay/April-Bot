@@ -126,7 +126,7 @@ class AprilTagDetector(Node):
         # Extract inner 6x6 data region (skip the 1-cell border)
         bits_6x6 = bits_8x8[1:7, 1:7]
         ones = np.sum(bits_6x6)
-        if ones < 6 or ones > 30:
+        if ones < 2 or ones > 32:
             return None
         
         return bits_6x6.flatten()
