@@ -39,6 +39,7 @@ def generate_launch_description():
         name='slam_toolbox',
         namespace='',
         output='screen',
+        cwd='/home/emily/April-Bot',
         parameters=[
             slam_params_file,  # Use config file
             {'use_sim_time': use_sim_time}
