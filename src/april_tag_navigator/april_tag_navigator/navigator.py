@@ -108,6 +108,8 @@ class AprilTagNavigator(Node):
         self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
 
+        self.last_tag_seen_time = None
+        self.tag_lost_timeout = 0.5
 
         # State
         self.state = NavigationState.IDLE
@@ -306,6 +308,7 @@ class AprilTagNavigator(Node):
                 pass
             # If the seen tag is the target AprilTag, mark it as seen and calculate the distance and angle to the target tag in order to update the state to TRACKING
             if tag_id == self.target_tag_id:
+                self.last_tag_seen_time = self.get_clock().now()
                 self.target_tag_visible = True
                 pose = detection.pose
                 self.target_tag_distance = math.sqrt(

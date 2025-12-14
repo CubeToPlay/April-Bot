@@ -31,13 +31,10 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
-        self.max_hamming = 6
+        self.max_hamming = 5
 
         self.min_confirm_time = 0.2  # seconds
         self.max_center_jump = 50.0  # pixels
-
-        self.last_tag_seen_time = None
-        self.tag_lost_timeout = 0.5
 
         self.bridge = CvBridge()
 
