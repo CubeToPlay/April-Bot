@@ -90,6 +90,16 @@ class AprilTagDetector(Node):
         CELL = img.shape[0] // GRID  # 30 pixels per cell
         
         bits_8x8 = np.zeros((GRID, GRID), dtype=np.uint8)
+        border_coords = [
+            bits_8x8[0, :], bits_8x8[-1, :],
+            bits_8x8[:, 0], bits_8x8[:, -1]
+        ]
+
+        border = np.concatenate(border_coords)
+
+        # AprilTag requires MOSTLY black border
+        if np.mean(border) < 0.75:
+            return None
         
         # Extract all 8x8 cells
         margin = 3  # Small margin to avoid edge effects
@@ -115,6 +125,9 @@ class AprilTagDetector(Node):
         
         # Extract inner 6x6 data region (skip the 1-cell border)
         bits_6x6 = bits_8x8[1:7, 1:7]
+        ones = np.sum(bits_6x6)
+        if ones < 6 or ones > 30:
+            return None
         
         return bits_6x6.flatten()
             
@@ -210,6 +223,8 @@ class AprilTagDetector(Node):
         
         # Use the unified decode function
         detected_code = self.decode_apriltag(warped)
+        if detected_code is None:
+            return None
         detected_6x6 = detected_code.reshape(6, 6)
         
         best_id = None
@@ -332,7 +347,8 @@ class AprilTagDetector(Node):
             
             # *** KEY FIX: Warp from original gray, not from thresh ***
             warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-            
+            if warped.std() < 20:
+                continue
             # *** THEN apply a clean threshold to the warped image ***
             # Try different threshold methods to see which works best:
             
