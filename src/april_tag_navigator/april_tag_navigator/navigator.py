@@ -839,7 +839,7 @@ class AprilTagNavigator(Node):
                     
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
-                        frontier['x'], frontier['y']
+                        frontier[0], frontier[1]
                     )
                     
                     if self.current_path:
