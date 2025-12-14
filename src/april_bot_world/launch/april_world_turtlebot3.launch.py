@@ -184,6 +184,19 @@ def generate_launch_description():
             parameters=[{'use_sim_time': True}],
             output='screen'
         ),
+        Node(
+            package='topic_tools',
+            executable='throttle',
+            name='camera_throttle',
+            arguments=[
+                'messages',
+                '/camera/image_raw',
+                '5.0',
+                '/camera/image_throttled'
+            ],
+            parameters=[{'use_sim_time': True}],
+            output='screen'
+        ),
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
             package='ros_gz_bridge',
