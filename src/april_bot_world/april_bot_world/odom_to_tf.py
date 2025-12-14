@@ -7,7 +7,6 @@ from geometry_msgs.msg import TransformStamped
 class OdomToTF(Node):
     def __init__(self):
         super().__init__('odom_to_tf')
-        self.declare_parameter('use_sim_time', True)
         self.tf_broadcaster = TransformBroadcaster(self)
         self.subscription = self.create_subscription(
             Odometry,
@@ -20,8 +19,8 @@ class OdomToTF(Node):
     def odom_callback(self, msg):
         t = TransformStamped()
         t.header.stamp = msg.header.stamp
-        t.header.frame_id = 'odom'
-        t.child_frame_id = 'base_footprint'
+        t.header.frame_id = msg.header.frame_id  # 'odom'
+        t.child_frame_id = msg.child_frame_id    # 'base_footprint'
         
         t.transform.translation.x = msg.pose.pose.position.x
         t.transform.translation.y = msg.pose.pose.position.y
