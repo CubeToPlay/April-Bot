@@ -24,7 +24,10 @@ setup(
         ('share/' + package_name + '/models', 
             glob.glob('models/rock_test/*')),
         ('share/' + package_name + '/models', 
+            ['models/SmallWalls.dae']),
+        ('share/' + package_name + '/models', 
             ['models/worldwalls.dae']),
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
