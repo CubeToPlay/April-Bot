@@ -6,6 +6,7 @@ from nav_msgs.msg import OccupancyGrid, Path
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
+from slam_toolbox.srv import SerializeMap
 import numpy as np
 import math
 from enum import Enum
@@ -111,6 +112,17 @@ class AprilTagNavigator(Node):
         self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
 
+        # Client
+        self.serialize_client = self.create_client(
+            SerializeMap,
+            '/slam_toolbox/serialize_map'
+        )
+        self.map_autosave_period = 60.0
+
+        self.map_autosave_timer = self.create_timer(
+            self.map_autosave_period,
+            self.autosave_map_callback
+        )
         # State
         self.state = NavigationState.IDLE
         """Robot's current state"""
@@ -168,6 +180,24 @@ class AprilTagNavigator(Node):
         
         # Load database
         self.load_tag_database()
+
+    def autosave_map_callback(self):
+        if not self.serialize_client.service_is_ready():
+            self.get_logger().warn('slam_toolbox serialize_map service not ready')
+            return
+
+        request = SerializeMap.Request()
+        request.filename = 'map_autosave'
+
+        future = self.serialize_client.call_async(request)
+        future.add_done_callback(self.autosave_done_callback)
+
+    def autosave_done_callback(self, future):
+        try:
+            response = future.result()
+            self.get_logger().info('SLAM map autosaved (map_autosave.posegraph)')
+        except Exception as e:
+            self.get_logger().error(f'Autosave failed: {e}')
     
     def map_ready(self):
         if self.map_data is None:
