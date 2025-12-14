@@ -140,28 +140,28 @@ def generate_launch_description():
         # ),
         
         # Static transform: base_footprint -> base_scan
-        # Node(
-        #     package='tf2_ros',
-        #     executable='static_transform_publisher',
-        #     name='base_footprint_to_base_scan',
-        #     output='screen',
-        #     arguments=['--x', '0', '--y', '0', '--z', '0.172', 
-        #               '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1',
-        #               '--frame-id', 'base_footprint', '--child-frame-id', 'base_scan'],
-        #     parameters=[{'use_sim_time': True}]
-        # ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_footprint_to_base_scan',
+            output='screen',
+            arguments=['--x', '0', '--y', '0', '--z', '0.172', 
+                      '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1',
+                      '--frame-id', 'base_footprint', '--child-frame-id', 'base_scan'],
+            parameters=[{'use_sim_time': True}]
+        ),
         
-        # # Static transform: base_footprint -> camera_rgb_frame
-        # Node(
-        #     package='tf2_ros',
-        #     executable='static_transform_publisher',
-        #     name='base_footprint_to_camera',
-        #     output='screen',
-        #     arguments=['--x', '0.073', '--y', '-0.011', '--z', '0.084',
-        #               '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1', 
-        #               '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
-        #     parameters=[{'use_sim_time': True}]
-        # ),
+        # Static transform: base_footprint -> camera_rgb_frame
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_footprint_to_camera',
+            output='screen',
+            arguments=['--x', '0.073', '--y', '-0.011', '--z', '0.084',
+                      '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1', 
+                      '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
+            parameters=[{'use_sim_time': True}]
+        ),
         Node(
             package='april_bot_world',
             executable='odom_to_tf',
