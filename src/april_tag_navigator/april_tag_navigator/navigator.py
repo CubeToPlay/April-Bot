@@ -514,7 +514,6 @@ class AprilTagNavigator(Node):
         )
 
         candidates = []
-
         MAX_RADIUS = int(5.0 / self.map_resolution)  # 5 meters
 
         for dy in range(-MAX_RADIUS, MAX_RADIUS):
@@ -525,31 +524,51 @@ class AprilTagNavigator(Node):
                 if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
                     continue
 
-                # must be free
-                if self.map_data[my, mx] != 0:
+                # Accept free or low-confidence cells (gray areas in RViz)
+                # 0-49: Free or uncertain but probably free
+                # 50-100: Obstacle
+                # -1: Unknown
+                if self.map_data[my, mx] >= 50:  # Skip obstacles
+                    continue
+                
+                if self.map_data[my, mx] == -1:  # Skip unknown (we want cells NEXT to unknown)
                     continue
 
-                # check if adjacent to unknown
-                neighbors = []
+                # Check if this cell is adjacent to unknown space
+                has_unknown_neighbor = False
                 for nx, ny in [(mx+1,my), (mx-1,my), (mx,my+1), (mx,my-1)]:
                     if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
-                        neighbors.append(self.map_data[ny, nx])
-
-                if -1 not in neighbors:
+                        if self.map_data[ny, nx] == -1:  # Found unknown neighbor
+                            has_unknown_neighbor = True
+                            break
+                
+                if not has_unknown_neighbor:
                     continue
 
-                # distance to robot
+                # Distance to robot
                 dist = math.hypot(mx - robot_mx, my - robot_my)
-                wx, wy = self.map_to_world(mx, my)
                 if dist * self.map_resolution < 0.6:  # minimum 60 cm
                     continue
+                
+                wx, wy = self.map_to_world(mx, my)
                 candidates.append((dist, wx, wy))
 
         if not candidates:
-            self.get_logger().warn("No frontier found")
+            self.get_logger().warn(
+                "No frontier found. Try moving to explore more.",
+                throttle_duration_sec=2.0
+            )
             return None
 
+        # Sort by distance and pick closest
         candidates.sort()
+        
+        self.get_logger().info(
+            f"Found {len(candidates)} frontier candidates, "
+            f"closest at ({candidates[0][1]:.2f}, {candidates[0][2]:.2f})",
+            throttle_duration_sec=2.0
+        )
+        
         return {'x': candidates[0][1], 'y': candidates[0][2]}
     
     def publish_path(self, path):
