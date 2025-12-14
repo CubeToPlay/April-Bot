@@ -108,9 +108,6 @@ class AprilTagNavigator(Node):
         self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
 
-        self.last_tag_seen_time = None
-        self.tag_lost_timeout = 0.5
-
         # State
         self.state = NavigationState.IDLE
         """Robot's current state"""
@@ -263,18 +260,13 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'Planning path to KNOWN tag {self.target_tag_id}')
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
-    def is_target_tag_visible(self):
-        if self.last_tag_seen_time is None:
-            return False
-
-        dt = (self.get_clock().now() - self.last_tag_seen_time).nanoseconds * 1e-9
-        return dt < self.tag_lost_timeout
     
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
 
         # Need to clear out all perviously seen tags before listing the newly seen ones
         self.current_detections = {}
+        seen_target = False
         for detection in msg.detections:
             # Get tag_id and then add it to the current_detections with its pose
             tag_id = detection.id
@@ -308,13 +300,13 @@ class AprilTagNavigator(Node):
                 pass
             # If the seen tag is the target AprilTag, mark it as seen and calculate the distance and angle to the target tag in order to update the state to TRACKING
             if tag_id == self.target_tag_id:
-                self.last_tag_seen_time = self.get_clock().now()
-                self.target_tag_visible = True
+                seen_target = True
                 pose = detection.pose
                 self.target_tag_distance = math.sqrt(
                     pose.position.x**2 + pose.position.y**2 + pose.position.z**2
                 )
                 self.target_tag_angle = math.degrees(math.atan2(pose.position.y, pose.position.x))
+        self.target_tag_visible = seen_target
 
     def update_robot_pose(self):
         """Get robot pose from SLAM"""
@@ -777,7 +769,7 @@ class AprilTagNavigator(Node):
         
         elif self.state == NavigationState.TRACKING:
             # If the tag is no longer visible, replan the path to the tag
-            if not self.is_target_tag_visible():
+            if not self.target_tag_visible:
                 self.state = NavigationState.PLANNING
                 self.get_logger().warn('Lost tag, replanning')
                 return
