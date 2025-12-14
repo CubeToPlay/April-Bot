@@ -408,6 +408,8 @@ class AprilTagNavigator(Node):
             self.get_logger().warn('No map available for planning')
             return None
         
+        ROBOT_RADIUS = int(0.25 / self.map_resolution)
+        
         # Convert the start and goal locations to map coordinates
         start_mx, start_my = self.world_to_map(start_x, start_y)
         goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
@@ -458,7 +460,7 @@ class AprilTagNavigator(Node):
                 neighbor = (current[0] + dx, current[1] + dy)
                 
                 # Path planning will skip neighbors with obstacles or neighbors that have been visited already
-                if not self.is_free(neighbor[0], neighbor[1]):
+                if not self.is_free(neighbor[0], neighbor[1], radius=ROBOT_RADIUS):
                     continue
                 
                 if neighbor in visited:
@@ -690,9 +692,22 @@ class AprilTagNavigator(Node):
             if self.target_tag_id in self.discovered_tags:
                 # Plan to known tag
                 tag = self.discovered_tags[self.target_tag_id]
+                # Vector from robot → tag
+                dx = tag['x'] - self.robot_pose['x']
+                dy = tag['y'] - self.robot_pose['y']
+                dist = math.hypot(dx, dy)
+
+                if dist > 0.001:
+                    ux, uy = dx / dist, dy / dist
+                else:
+                    ux, uy = 0.0, 0.0
+
+                # Stand-off goal in front of tag
+                goal_x = tag['x'] - ux * self.approach_distance
+                goal_y = tag['y'] - uy * self.approach_distance
                 self.current_path = self.astar_planning(
                     self.robot_pose['x'], self.robot_pose['y'],
-                    tag['x'], tag['y']
+                    goal_x, goal_y
                 )
 
                 if self.current_path:
