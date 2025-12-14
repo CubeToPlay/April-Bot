@@ -67,7 +67,7 @@ class AprilTagNavigator(Node):
             use_sim = self.get_parameter('use_sim_time').value
             self.get_logger().info(f'use_sim_time: {use_sim}')
         except:
-            self.get_logger().warn('use_sim_time not set!')
+            self.get_logger().warning('use_sim_time not set!')
         self.tf_buffer = Buffer(cache_time=rclpy.duration.Duration(seconds=30.0))
         """Stores the last set of transformations"""
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -370,7 +370,7 @@ class AprilTagNavigator(Node):
                 self.last_logged_pose = self.robot_pose.copy()
                 
         except TransformException as ex:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 f'TF lookup failed: {str(ex)[:100]}',
                 throttle_duration_sec=2.0
             )
@@ -397,7 +397,7 @@ class AprilTagNavigator(Node):
         self.map_width = new_width
         self.map_height = new_height
         if resized:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 f"Map resized to {new_width}x{new_height}, pausing navigation",
                 throttle_duration_sec=2.0
             )
@@ -462,7 +462,7 @@ class AprilTagNavigator(Node):
     def astar_planning(self, start_x, start_y, goal_x, goal_y):
         """A* path planning algorithm"""
         if self.map_data is None:
-            self.get_logger().warn('No map available for planning')
+            self.get_logger().warning('No map available for planning')
             return None
         
         ROBOT_RADIUS = int(0.25 / self.map_resolution)
@@ -473,12 +473,12 @@ class AprilTagNavigator(Node):
 
         # Check if the starting location is valid (if it is free)
         if not self.is_free(start_mx, start_my):
-            self.get_logger().warn('Start position is not free')
+            self.get_logger().warning('Start position is not free')
             return None
         
         # Check if the goal location is valid (if it is free)
         if not self.is_free(goal_mx, goal_my):
-            self.get_logger().warn('Goal position is not free')
+            self.get_logger().warning('Goal position is not free')
             # If the goal postiion is not free, it will find the nearest free cell
             goal_mx, goal_my = self.find_nearest_free(goal_mx, goal_my)
             if goal_mx is None:
@@ -540,7 +540,7 @@ class AprilTagNavigator(Node):
                     heapq.heappush(open_set, (f_score[neighbor], neighbor))
         
         # If open_set is empty without reaching the goal, it means that a path from the starting location to the goal location does not exist
-        self.get_logger().warn('No path found!')
+        self.get_logger().warning('No path found!')
         return None
         
     
@@ -628,7 +628,7 @@ class AprilTagNavigator(Node):
                 candidates.append((dist, wx, wy))
 
         if not candidates:
-            self.get_logger().warn(
+            self.get_logger().warning(
                 "No frontier found. Try moving to explore more.",
                 throttle_duration_sec=2.0
             )
@@ -798,7 +798,7 @@ class AprilTagNavigator(Node):
                         self.publish_path(self.current_path)
                         self.get_logger().info('Exploring frontier')
                 else:
-                    self.get_logger().warn('No frontier found')
+                    self.get_logger().warning('No frontier found')
                     self.state = NavigationState.PLANNING
 
         elif self.state == NavigationState.NAVIGATING:
@@ -842,7 +842,7 @@ class AprilTagNavigator(Node):
             # If the tag is no longer visible, replan the path to the tag
             if not self.target_tag_visible:
                 self.state = NavigationState.PLANNING
-                self.get_logger().warn('Lost tag, replanning')
+                self.get_logger().warning('Lost tag, replanning')
                 return
             
             # If the robot has reached the april tag, change the state to REACHED and publish that the tag was reached
