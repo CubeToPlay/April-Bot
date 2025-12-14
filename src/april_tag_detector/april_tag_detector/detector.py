@@ -118,11 +118,11 @@ class AprilTagDetector(Node):
         
         # Normalize polarity: corners should be BLACK (1) - part of the border
         corner_bits = [bits_8x8[0,0], bits_8x8[0,7], bits_8x8[7,0], bits_8x8[7,7]]
-        # if np.mean(corner_bits) < 0.5:  # If corners are mostly white
-        #     bits_8x8 = 1 - bits_8x8
+        if np.mean(corner_bits) < 0.5:  # If corners are mostly white
+            bits_8x8 = 1 - bits_8x8
         
-        if not self.has_valid_black_border(bits_8x8):
-            return None
+        # if not self.has_valid_black_border(bits_8x8):
+        #     return None
         
         # Extract inner 6x6 data region (skip the 1-cell border)
         bits_6x6 = bits_8x8[1:7, 1:7]
