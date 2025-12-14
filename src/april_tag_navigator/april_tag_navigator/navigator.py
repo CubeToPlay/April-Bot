@@ -6,7 +6,7 @@ from nav_msgs.msg import OccupancyGrid, Path
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
-from slam_toolbox.srv import SerializeMap
+from slam_toolbox.srv import SerializePoseGraph
 import numpy as np
 import math
 from enum import Enum
@@ -114,7 +114,7 @@ class AprilTagNavigator(Node):
 
         # Client
         self.serialize_client = self.create_client(
-            SerializeMap,
+            SerializePoseGraph,
             '/slam_toolbox/serialize_map'
         )
         self.map_autosave_period = 60.0
@@ -186,7 +186,7 @@ class AprilTagNavigator(Node):
             self.get_logger().warn('slam_toolbox serialize_map service not ready')
             return
 
-        request = SerializeMap.Request()
+        request = SerializePoseGraph.Request()
         request.filename = 'map_autosave'
 
         future = self.serialize_client.call_async(request)

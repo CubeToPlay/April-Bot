@@ -26,4 +26,4 @@ slam_toolbox:
     ignore_max_range: false 
     rolling_window: false
 
-    load_state_filename: map.posegraph
+    load_state_filename: map_autosave.posegraph
