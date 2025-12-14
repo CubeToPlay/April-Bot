@@ -31,18 +31,10 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
-        self.max_hamming = 3
+        self.max_hamming = 5
 
         self.min_confirm_time = 0.2  # seconds
         self.max_center_jump = 50.0  # pixels
-
-        self.tag_tracks = {}  
-        # tag_id -> {
-        #   'first_seen': time,
-        #   'last_seen': time,
-        #   'last_center': np.array([x,y]),
-        #   'count': int
-        # }
 
         self.bridge = CvBridge()
 
@@ -86,7 +78,7 @@ class AprilTagDetector(Node):
         self.visualization_pub = self.create_publisher(Image, '/apriltag_detections_image', 10)
         """Publishes visualization of the AprilTags with drawn detections"""
     
-    def decode_apriltag_6x6(self, img):
+    def decode_apriltag(self, img):
         """
         Universal decoder for both templates and detected tags.
         Input: 240x240 grayscale image containing 8x8 structure (border + 6x6 data + border)
@@ -121,30 +113,10 @@ class AprilTagDetector(Node):
         if np.mean(corner_bits) < 0.5:  # If corners are mostly white
             bits_8x8 = 1 - bits_8x8
         
-        # if not self.has_valid_black_border(bits_8x8):
-        #     return None
-        
         # Extract inner 6x6 data region (skip the 1-cell border)
         bits_6x6 = bits_8x8[1:7, 1:7]
         
         return bits_6x6.flatten()
-    
-    
-    def strip_white_outline(self, img):
-        """
-        Crops white quiet zone from AprilTag template
-        """
-        _, thresh = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY_INV)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        if not contours:
-            return img
-
-        cnt = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(cnt)
-
-        return img[y:y+h, x:x+w]
-            
             
     def load_tags(self):
         """Load AprilTag images from directory"""
@@ -174,6 +146,7 @@ class AprilTagDetector(Node):
                     self.get_logger().info(f'Loaded tag ID {tag_id}')
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
+    
     def decode_template(self, img):
         """Decode template - 8x8 structure (1 border + 6 data + 1 border)"""
         
@@ -194,7 +167,6 @@ class AprilTagDetector(Node):
                 mean_val = np.mean(cell)
                 # Black = 1, White = 0
                 bits_8x8[y, x] = 1 if mean_val < 128 else 0
-        
         
         # Extract inner 6x6 (skip the border)
         bits_6x6 = bits_8x8[1:7, 1:7]
@@ -237,7 +209,7 @@ class AprilTagDetector(Node):
             _, warped = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
         
         # Use the unified decode function
-        detected_code = self.decode_apriltag_6x6(warped)
+        detected_code = self.decode_apriltag(warped)
         detected_6x6 = detected_code.reshape(6, 6)
         
         best_id = None
@@ -271,7 +243,7 @@ class AprilTagDetector(Node):
         
         for tag_id, img in self.tags.items():
             # Use the SAME decode function as we use for detected tags
-            code = self.decode_apriltag_6x6(img)
+            code = self.decode_apriltag(img)
             codes[tag_id] = code
             
             self.get_logger().info(f'\nTag {tag_id} template code:\n{code.reshape(6,6)}')
@@ -294,9 +266,6 @@ class AprilTagDetector(Node):
             self.dist_coeffs = np.array(msg.d) if len(msg.d) > 0 else np.zeros(5)
             self.camera_frame = msg.header.frame_id
             self.get_logger().info(f'Camera calibration received. Frame: {self.camera_frame}')
-    def prune_tracks(self, timeout=0.5):
-        now = self.get_clock().now().nanoseconds * 1e-9
-        self.tag_tracks = {tid: tr for tid, tr in self.tag_tracks.items() if now - tr['last_seen'] < timeout}
 
     def order_points(self, pts):
         rect = np.zeros((4,2), dtype="float32")
@@ -307,59 +276,6 @@ class AprilTagDetector(Node):
         rect[1] = pts[np.argmin(diff)]
         rect[3] = pts[np.argmax(diff)]
         return rect
-    
-    def extract_bits(self, warped):
-        GRID = 6
-        CELL = warped.shape[0] // GRID
-        bits = np.zeros((GRID, GRID), dtype=np.uint8)
-
-        for y in range(GRID):
-            for x in range(GRID):
-                cell = warped[
-                    y*CELL:(y+1)*CELL,
-                    x*CELL:(x+1)*CELL
-                ]
-                bits[y, x] = 1 if np.mean(cell) < 128 else 0
-        return bits
-    
-    def match_bits(self, payload):
-        best_id = None
-        best_score = 0
-
-        for tag_id, template in self.valid_tag_codes.items():
-            for rot in range(4):
-                rotated = np.rot90(template.reshape(4,4), rot).flatten()
-                score = np.sum(payload == rotated)
-                if score > best_score:
-                    best_score = score
-                    best_id = tag_id
-
-        if best_score >= 16 - self.max_hamming:
-            return best_id
-        return None
-
-    def extract_bit_grid_from_image(self, img):
-        size = img.shape[0]
-        border = int(size * 0.15)
-        inner = img[border:-border, border:-border]
-        grid = cv2.resize(inner, (6, 6), interpolation=cv2.INTER_AREA)
-        bits = (grid > 127).astype(np.uint8)
-        return bits
-    
-    def match_tag_bits(self, bits):
-        for tag_id, template_bits in self.valid_tag_codes.items():
-            if np.array_equal(bits, template_bits):
-                return tag_id
-        return None
-    
-    def has_valid_black_border(self, bits_8x8):
-        # Top & bottom rows
-        if not np.all(bits_8x8[0, :] == 1): return False
-        if not np.all(bits_8x8[7, :] == 1): return False
-        # Left & right columns
-        if not np.all(bits_8x8[:, 0] == 1): return False
-        if not np.all(bits_8x8[:, 7] == 1): return False
-        return True
 
     def find_apriltags_contours(self, image, warp_size=240):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -448,77 +364,6 @@ class AprilTagDetector(Node):
 
         return detected_tags, debug_image
 
-
-    def detect_apriltags(self, image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Robust threshold
-        thresh = cv2.adaptiveThreshold(
-            gray, 255,
-            cv2.ADAPTIVE_THRESH_MEAN_C,
-            cv2.THRESH_BINARY,
-            31, 5
-        )
-
-        # Normalize polarity
-        if np.mean(thresh) > 127:
-            thresh = 255 - thresh
-
-        contours, hierarchy = cv2.findContours(
-            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-        )
-
-        detections = []
-
-        for cnt in contours:
-            peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
-
-            if len(approx) != 4 or not cv2.isContourConvex(approx):
-                continue
-
-            quad = approx.reshape(4, 2)
-            quad = self.order_points(quad)
-
-            # Reject small quads
-            if cv2.contourArea(quad.astype(np.int32)) < 500:
-                continue
-
-            # Warp
-            warp_size = 240
-            dst = np.array([
-                [0, 0],
-                [warp_size - 1, 0],
-                [warp_size - 1, warp_size - 1],
-                [0, warp_size - 1]
-            ], dtype=np.float32)
-
-            M = cv2.getPerspectiveTransform(quad.astype(np.float32), dst)
-            warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-
-            warped = cv2.adaptiveThreshold(
-                warped, 255,
-                cv2.ADAPTIVE_THRESH_MEAN_C,
-                cv2.THRESH_BINARY,
-                31, 5
-            )
-
-            if np.mean(warped) > 127:
-                warped = 255 - warped
-
-            tag_id = self.decode_quad(warped)
-            if tag_id is None:
-                continue
-
-            detections.append({
-                "id": tag_id,
-                "corners": quad,
-                "center": quad.mean(axis=0)
-            })
-
-        return detections
-
-
     def image_callback(self, msg):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -531,7 +376,6 @@ class AprilTagDetector(Node):
         detections_array = AprilTagDetectionArray()
         detections_array.header.stamp = self.get_clock().now().to_msg()
         detections_array.header.frame_id = self.camera_frame
-        self.prune_tracks()
 
         for tag in detected_tags:
             tag_id = tag['id']

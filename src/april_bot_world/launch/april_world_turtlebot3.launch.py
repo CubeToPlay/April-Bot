@@ -8,24 +8,9 @@ from launch_ros.substitutions import FindPackageShare
 import os
 
 def generate_launch_description():
-    ros_gz_sim_pkg_path = get_package_share_directory('ros_gz_sim') #ros/gazebo package
-    turtlebot3_gazebo_pkg_path = get_package_share_directory('turtlebot3_gazebo') #turtlebot3_gazebo package
-
     pkg_share = get_package_share_directory('april_bot_world')
     pkg_path = FindPackageShare('april_bot_world') #current package
-
-    gz_launch_path = PathJoinSubstitution([ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py']) #path to launch file for ros/gazebo sim
-    turtlebot3_spawn_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'spawn_turtlebot3.launch.py']) #path to launch file for spawning turtlebot3
-    turtlebot3_state_publisher_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'robot_state_publisher.launch.py']) #path to turtlebot3 state publisher launch file
-
-    x_pose = LaunchConfiguration('x_pose', default='-2.0') #set the x position of turtlebot
-    y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
-    models_path = os.path.join(pkg_share, 'models')
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
-    apriltag_resources_path = os.path.join(
-        get_package_share_directory('apriltag_resources'),
-        'models'
-    )
     return LaunchDescription([
         SetEnvironmentVariable(
             name='GZ_SIM_RESOURCE_PATH',
@@ -54,90 +39,6 @@ def generate_launch_description():
             output='screen',
             shell=False
         ),
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(gz_launch_path),
-        #     launch_arguments={
-        #         'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
-        #         'on_exit_shutdown': 'True'
-        #     }.items(),
-        # ),
-        # TimerAction(
-        #     period=3.0,
-        #     actions=[
-        #         Node(
-        #             package='ros_gz_sim',
-        #             executable='create',
-        #             name='spawn_turtlebot3',
-        #             arguments=[
-        #                 '-world', 'apriltag_world',
-        #                 '-name', 'turtlebot3_waffle', 
-        #                 '-file', os.path.join(models_path, 'turtlebot3_waffle_gz', 'model.sdf'),
-        #                 '-x', '-2.0',
-        #                 '-y', '-0.5',
-        #                 '-z', '0.01',
-        #             ],
-        #             output='screen',
-        #             parameters=[{'use_sim_time': True}]
-        #         ),
-        #     ]
-        # ),
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(gz_launch_path),
-        #     launch_arguments={
-        #         'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
-        #         'on_exit_shutdown': 'True'
-        #     }.items(),
-        # ),
-
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
-        # ),
-        #  Node(
-        #     package='ros_gz_sim',
-        #     executable='spawn_entity.py',
-        #     arguments=[
-        #         '-topic', 'robot_description',
-        #         '-entity', 'waffle',
-        #         '-x', x_pose,
-        #         '-y', y_pose,
-        #         '-z', '0.01',
-        #     ],
-        #     output='screen',
-        #     parameters=[{'use_sim_time': True}]
-        # ),
-
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
-        #     launch_arguments={
-        #         'x_pose': x_pose,
-        #         'y_pose': y_pose
-        #     }.items(),
-        # ),
-        # Node(
-        #     package='tf2_ros',
-        #     executable='static_transform_publisher',
-        #     name='odom_to_base_footprint',
-        #     output='screen',
-        #     arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_footprint'],
-        #     parameters=[{'use_sim_time': True}]
-        # ),
-        # Node(
-        #     package='tf2_ros',
-        #     executable='static_transform_publisher',
-        #     name='base_footprint_to_base_scan',
-        #     output='screen',
-        #     arguments=['0', '0', '0.2', '0', '0', '0', 'base_footprint', 'base_scan'],
-        #     parameters=[{'use_sim_time': True}]
-        # ),
-        # Static transform: odom -> base_footprint (backup)
-        # Node(
-        #     package='tf2_ros',
-        #     executable='static_transform_publisher',
-        #     name='odom_to_base_footprint_backup',
-        #     output='screen',
-        #     arguments=['--frame-id', 'odom', '--child-frame-id', 'base_footprint'],
-        #     parameters=[{'use_sim_time': True}]
-        # ),
         
         # Static transform: base_footprint -> base_scan
         Node(
@@ -191,8 +92,6 @@ def generate_launch_description():
                 '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
                 '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
                 '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-                # '/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
-                # '/tf_static@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             ],
             remappings=[
                 ('/camera/image_raw', '/camera/image_raw'),

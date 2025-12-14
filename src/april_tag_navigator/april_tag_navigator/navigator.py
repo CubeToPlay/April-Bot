@@ -372,7 +372,7 @@ class AprilTagNavigator(Node):
         y = my * self.map_resolution + self.map_origin['y']
         return x, y
     
-    def is_free(self, mx, my, radius=0):
+    def is_free(self, mx, my, radius=0, allow_unknown=False):
         """Check if map cell is free
         0-49: Free space
         50-100: Occupied (obstacle)
@@ -383,8 +383,16 @@ class AprilTagNavigator(Node):
                 cx, cy = mx + dx, my + dy
                 if not (0 <= cx < self.map_width and 0 <= cy < self.map_height):
                     return False
-                if self.map_data[cy, cx] >= 50:   # obstacle
+                
+                cell_value = self.map_data[cy, cx]
+                
+                # Treat unknown as free if allowed
+                if allow_unknown and cell_value == -1:
+                    continue
+                
+                if cell_value >= 50:  # obstacle
                     return False
+        
         return True
 
     def astar_planning(self, start_x, start_y, goal_x, goal_y):
