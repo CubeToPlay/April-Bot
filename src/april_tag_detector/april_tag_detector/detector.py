@@ -31,7 +31,7 @@ class AprilTagDetector(Node):
         self.tag_dir = self.get_parameter('tag_dir').value
         """The directory that containsthe tag images"""
 
-        self.max_hamming = 4
+        self.max_hamming = 3
 
         self.min_confirm_time = 0.2  # seconds
         self.max_center_jump = 50.0  # pixels
@@ -254,7 +254,7 @@ class AprilTagDetector(Node):
                     best_score = score
                     best_id = tag_id
 
-        threshold = 36 - (self.max_hamming * 2)
+        threshold = 36 - self.max_hamming
                 
         if best_score >= threshold:
             # Show visualization - now should show clean black/white cells

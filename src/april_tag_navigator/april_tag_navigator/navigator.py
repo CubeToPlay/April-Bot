@@ -588,15 +588,25 @@ class AprilTagNavigator(Node):
             waypoint = self.current_path[self.path_index]
             dx = waypoint[0] - self.robot_pose['x']
             dy = waypoint[1] - self.robot_pose['y']
+            distance = math.sqrt(dx**2 + dy**2)
         
         # Compute the angle to the waypoint
         target_angle = math.atan2(dy, dx)
         q = self.robot_pose['orientation']
-        current_yaw = math.atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z))
-        
+        current_yaw = math.atan2(
+            2.0 * (q.w * q.z + q.x * q.y),
+            1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        )
+
         angle_diff = target_angle - current_yaw
         angle_diff = math.atan2(math.sin(angle_diff), math.cos(angle_diff))
         
+        self.get_logger().info(
+            f'Target: ({waypoint[0]:.2f}, {waypoint[1]:.2f}), '
+            f'Current: ({self.robot_pose["x"]:.2f}, {self.robot_pose["y"]:.2f}), '
+            f'Distance: {distance:.2f}m, Angle diff: {math.degrees(angle_diff):.1f}°',
+            throttle_duration_sec=2.0
+        )
         return distance, angle_diff
 
     def save_tag_database(self):
@@ -686,13 +696,13 @@ class AprilTagNavigator(Node):
                 if self.target_tag_id in self.discovered_tags:
                     self.state = NavigationState.TRACKING
                 else:
-                    # If the target AprilTag has not been discovered, the robot should continue PLANNING and move onto the next closest unexplored location
+                    # Spin to look for tag
                     twist.linear.x = 0.0
-                    twist.angular.z = 0.4
+                    twist.angular.z = 0.3  # Reduced from 0.4 for smoother spin
                     self.cmd_vel_pub.publish(twist)
-
-                    # After spinning a bit, replan
-                    if (self.get_clock().now() - self.spin_start_time).nanoseconds > 2e9:
+                    
+                    # Replan after spinning
+                    if (self.get_clock().now() - self.spin_start_time).nanoseconds > 3e9:  # 3 seconds
                         self.spin_start_time = self.get_clock().now()
                         self.state = NavigationState.PLANNING
                 return
@@ -700,15 +710,20 @@ class AprilTagNavigator(Node):
             # Robot should determine the distance and angle to the next waypoint and move towards it.
             distance, angle_diff = nav_info
             
-            if abs(angle_diff) > 0.4:
+            if abs(angle_diff) > 0.5:
                 twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                twist.linear.x = 0.0 
+            elif abs(angle_diff) > 0.2:  # 11-28 degrees
+                # Turn while moving slowly
+                twist.angular.z = self.angular_speed * (angle_diff / abs(angle_diff))
                 twist.linear.x = self.linear_speed * 0.5
             else:
                 twist.linear.x = self.linear_speed
-                twist.angular.z = self.angular_speed * angle_diff
+                twist.angular.z = self.angular_speed * angle_diff * 2.0
             
             self.get_logger().info(
-                f'Following path: waypoint {self.path_index}/{len(self.current_path)}',
+                f'Nav: wp {self.path_index}/{len(self.current_path)}, '
+                f'dist={distance:.2f}m, angle={math.degrees(angle_diff):.1f}°',
                 throttle_duration_sec=1.0
             )
         
@@ -725,12 +740,30 @@ class AprilTagNavigator(Node):
                 self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
             # If the robot has not been reached and is still visible, move toward the tag
             else:
-                twist.linear.x = self.linear_speed
-                twist.angular.z = -self.angular_speed * (self.target_tag_angle / 30.0)
+                # Calculate angular velocity to center the tag
+                # target_tag_angle is in degrees, positive = tag is to the right
+                angle_error_rad = math.radians(self.target_tag_angle)
+                
+                # Proportional control for turning
+                angular_vel = -angle_error_rad * 2.0  # Gain of 2.0
+                
+                # Clamp angular velocity
+                max_angular = self.angular_speed
+                angular_vel = max(-max_angular, min(max_angular, angular_vel))
+                
+                # Slow down linear speed when turning sharply
+                if abs(angle_error_rad) > math.radians(15):  # > 15 degrees off
+                    twist.linear.x = self.linear_speed * 0.3
+                else:
+                    twist.linear.x = self.linear_speed * 0.7
+                
+                twist.angular.z = angular_vel
                 
                 self.get_logger().info(
-                    f'Tracking: {self.target_tag_distance:.2f}m',
-                    throttle_duration_sec=1.0
+                    f'Tracking: dist={self.target_tag_distance:.2f}m, '
+                    f'angle={self.target_tag_angle:.1f}°, '
+                    f'cmd_vel=({twist.linear.x:.2f}, {twist.angular.z:.2f})',
+                    throttle_duration_sec=0.5
                 )
         # If the robot has reached the tag, the robot should become idle and wait for new commands
         elif self.state == NavigationState.REACHED:
