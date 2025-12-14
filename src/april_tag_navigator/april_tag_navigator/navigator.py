@@ -41,6 +41,8 @@ class AprilTagNavigator(Node):
         self.declare_parameter('tag_database_path', 'discovered_tags.json')
         self.declare_parameter('frontier_grid_size', 0.5)
         self.declare_parameter('cancel_command', 11)
+        self.declare_parameter('min_wall_distance', 0.35)   # meters
+        self.declare_parameter('critical_distance', 0.20)  # emergency stop
         
         self.approach_distance = self.get_parameter('approach_distance').value
         """How close the robot has to be to count the tag as approached"""
@@ -237,7 +239,7 @@ class AprilTagNavigator(Node):
 
         # Main navigation loop
         self.nav_timer = self.create_timer(
-            0.1,
+            0.05,
             self.navigation_loop
         )
 
