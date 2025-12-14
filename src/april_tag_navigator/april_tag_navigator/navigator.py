@@ -261,13 +261,18 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'Planning path to KNOWN tag {self.target_tag_id}')
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
+    def is_target_tag_visible(self):
+        if self.last_tag_seen_time is None:
+            return False
 
+        dt = (self.get_clock().now() - self.last_tag_seen_time).nanoseconds * 1e-9
+        return dt < self.tag_lost_timeout
+    
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
 
         # Need to clear out all perviously seen tags before listing the newly seen ones
         self.current_detections = {}
-        self.target_tag_visible = False
         for detection in msg.detections:
             # Get tag_id and then add it to the current_detections with its pose
             tag_id = detection.id
@@ -754,7 +759,7 @@ class AprilTagNavigator(Node):
         
         elif self.state == NavigationState.TRACKING:
             # If the tag is no longer visible, replan the path to the tag
-            if not self.target_tag_visible:
+            if not self.is_target_tag_visible():
                 self.state = NavigationState.PLANNING
                 self.get_logger().warn('Lost tag, replanning')
                 return
