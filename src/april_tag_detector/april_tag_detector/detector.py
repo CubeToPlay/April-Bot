@@ -259,8 +259,6 @@ class AprilTagDetector(Node):
         for tag_id, img in self.tags.items():
             # Use the SAME decode function as we use for detected tags
             code = self.decode_apriltag(img)
-            if code is None:
-                continue
             codes[tag_id] = code
             
             self.get_logger().info(f'\nTag {tag_id} template code:\n{code.reshape(6,6)}')
