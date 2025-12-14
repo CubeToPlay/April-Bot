@@ -290,7 +290,7 @@ class AprilTagNavigator(Node):
                 continue
             pose = detection.pose
 
-            q = self.robot_pose['q']
+            q = self.robot_pose['orientation']
             yaw = math.atan2(
                 2.0 * (q.w * q.z + q.x * q.y),
                 1.0 - 2.0 * (q.y*q.y + q.z*q.z)
@@ -332,9 +332,9 @@ class AprilTagNavigator(Node):
             if tag_id == self.target_tag_id:
                 seen_target = True
                 pose = detection.pose
-                self.target_tag_distance = math.sqrt(
-                    x**2 + y**2 + 0.0**2
-                )
+                dx = x - self.robot_pose['x']
+                dy = y - self.robot_pose['y']
+                self.target_tag_distance = math.hypot(dx, dy)
                 self.target_tag_angle = tag_angle
         self.target_tag_visible = seen_target
 
