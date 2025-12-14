@@ -6,7 +6,7 @@ slam_toolbox:
     odom_frame: odom
     map_frame: map
     base_frame: base_footprint
-    scan_topic: /scan
+    scan_topic: /scan_throttled
 
     resolution: 0.05
 
@@ -23,3 +23,7 @@ slam_toolbox:
 
     use_scan_matching: true
     do_loop_closing: true
+
+    scan_queue_size: 50
+    transform_timeout: 0.5
+    tf_buffer_duration: 60.0

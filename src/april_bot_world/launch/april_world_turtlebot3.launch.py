@@ -171,6 +171,19 @@ def generate_launch_description():
         #     }],
         #     output='screen'
         # ),
+        Node(
+            package='topic_tools',
+            executable='throttle',
+            name='scan_throttle',
+            arguments=[
+                'messages',
+                '/scan',
+                '10.0',          # 10 Hz
+                '/scan_throttled'
+            ],
+            parameters=[{'use_sim_time': True}],
+            output='screen'
+        ),
         # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
         Node(
             package='ros_gz_bridge',
