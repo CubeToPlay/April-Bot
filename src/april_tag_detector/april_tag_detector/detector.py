@@ -90,16 +90,6 @@ class AprilTagDetector(Node):
         CELL = img.shape[0] // GRID  # 30 pixels per cell
         
         bits_8x8 = np.zeros((GRID, GRID), dtype=np.uint8)
-        border_coords = [
-            bits_8x8[0, :], bits_8x8[-1, :],
-            bits_8x8[:, 0], bits_8x8[:, -1]
-        ]
-
-        border = np.concatenate(border_coords)
-
-        # AprilTag requires MOSTLY black border
-        if np.mean(border) < 0.75:
-            return None
         
         # Extract all 8x8 cells
         margin = 3  # Small margin to avoid edge effects
