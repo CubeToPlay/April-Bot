@@ -524,17 +524,18 @@ class AprilTagNavigator(Node):
                 mx = robot_mx + dx
                 my = robot_my + dy
 
+                if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
+                    continue
+
                 # must be free
-                if self.map_data[my, mx] >= 50:
+                if self.map_data[my, mx] != 0:
                     continue
 
                 # check if adjacent to unknown
-                neighbors = [
-                    self.map_data[my+1, mx],
-                    self.map_data[my-1, mx],
-                    self.map_data[my, mx+1],
-                    self.map_data[my, mx-1],
-                ]
+                neighbors = []
+                for nx, ny in [(mx+1,my), (mx-1,my), (mx,my+1), (mx,my-1)]:
+                    if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
+                        neighbors.append(self.map_data[ny, nx])
 
                 if -1 not in neighbors:
                     continue
