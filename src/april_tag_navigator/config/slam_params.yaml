@@ -1,57 +1,26 @@
 slam_toolbox:
   ros__parameters:
-    # Solver config
-    solver_plugin: solver_plugins::CeresSolver
-    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
-    ceres_preconditioner: SCHUR_JACOBI
-    ceres_trust_strategy: LEVENBERG_MARQUARDT
-    ceres_dogleg_type: TRADITIONAL_DOGLEG
-    ceres_loss_function: None
+    mode: mapping
+    use_sim_time: true
 
-    # Frames
     odom_frame: odom
     map_frame: map
     base_frame: base_footprint
     scan_topic: /scan
-    use_map_saver: true
-    mode: mapping
 
-    # Timing
-    transform_publish_period: 0.02
-    map_update_interval: 1.0  # Update map more frequently
-    
-    # Resolution - SMALLER = MORE DETAIL
     resolution: 0.05
 
-    # CRITICAL FOR FREE SPACE MARKING
-    max_laser_range: 3.5  # MUST match your LiDAR exactly
-    minimum_time_interval: 0.1  # Process scans frequently
-    
-    # Movement thresholds - LOWER = MORE UPDATES
-    minimum_travel_distance: 0.05  # Was 0.2, now update more often
-    minimum_travel_heading: 0.05   # Was 0.2, now update more often
-    
-    # Scan processing
-    scan_buffer_size: 20  # Increased from 10
-    scan_buffer_maximum_scan_distance: 3.5  # Match max range
-    
-    # ENABLE THESE FOR BETTER FREE SPACE
+    minimum_laser_range: 0.12
+    max_laser_range: 3.5
+
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 3.5
+
+    map_update_interval: 1.0
+
+    minimum_travel_distance: 0.2
+    minimum_travel_heading: 0.2
+
     use_scan_matching: true
-    use_scan_barycenter: true
-    
-    # Correlation - affects free space detection
-    correlation_search_space_dimension: 0.5
-    correlation_search_space_resolution: 0.015
-    correlation_search_space_smear_deviation: 0.1
-    
-    # Make SLAM more aggressive about marking free space
-    link_match_minimum_response_fine: 0.05  # Lower = more liberal
-    link_scan_maximum_distance: 2.0
-    
-    # Loop closure
     do_loop_closing: true
-    loop_search_maximum_distance: 4.0
-    loop_match_minimum_chain_size: 5  # Lower = more updates
-    loop_match_maximum_variance_coarse: 3.0
-    loop_match_minimum_response_coarse: 0.2  # Lower
-    loop_match_minimum_response_fine: 0.3    # Lower
+    ignore_max_range: false 
