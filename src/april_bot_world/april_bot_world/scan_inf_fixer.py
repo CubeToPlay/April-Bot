@@ -32,7 +32,7 @@ class ScanInfFixer(Node):
         fixed_scan.scan_time = msg.scan_time
         fixed_scan.range_min = msg.range_min
         fixed_scan.range_max = msg.range_max
-        fixed_scan.intensities = msg.intensities.copy()
+        fixed_scan.intensities = msg.intensities[:] 
 
         # Replace inf with range_max
         fixed_scan.ranges = [
