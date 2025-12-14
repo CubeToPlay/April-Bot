@@ -23,3 +23,4 @@ slam_toolbox:
 
     use_scan_matching: true
     do_loop_closing: true
+    ignore_max_range: false 
