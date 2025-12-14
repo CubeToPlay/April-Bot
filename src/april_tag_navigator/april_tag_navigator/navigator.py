@@ -353,6 +353,8 @@ class AprilTagNavigator(Node):
         }
         self.map_width = msg.info.width
         self.map_height = msg.info.height
+        if self.state == NavigationState.NAVIGATING:
+            self.state = NavigationState.PLANNING
 
     def scan_callback(self, msg):
         """Process LiDAR"""
@@ -488,7 +490,7 @@ class AprilTagNavigator(Node):
         
         # Convert to world coordinates and simplify
         world_path = []
-        for mx, my in path[::5]:  # Take every 5th waypoint in order to reduce path length
+        for mx, my in path[::2]:  # Take every 5th waypoint in order to reduce path length
             wx, wy = self.map_to_world(mx, my)
             world_path.append((wx, wy))
         
@@ -515,8 +517,12 @@ class AprilTagNavigator(Node):
 
         candidates = []
 
-        for my in range(1, self.map_height - 1):
-            for mx in range(1, self.map_width - 1):
+        MAX_RADIUS = int(5.0 / self.map_resolution)  # 5 meters
+
+        for dy in range(-MAX_RADIUS, MAX_RADIUS):
+            for dx in range(-MAX_RADIUS, MAX_RADIUS):
+                mx = robot_mx + dx
+                my = robot_my + dy
 
                 # must be free
                 if self.map_data[my, mx] >= 50:
@@ -636,6 +642,16 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
+
+        if self.laser_ranges is not None:
+            if np.min(self.laser_ranges[0:10].tolist() +
+                    self.laser_ranges[-10:].tolist()) < 0.4:
+                self.get_logger().warn("Obstacle too close — replanning")
+                self.state = NavigationState.PLANNING
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.cmd_vel_pub.publish(twist)
+                return
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
