@@ -9,6 +9,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoS
 from slam_toolbox.srv import SerializePoseGraph
 from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.time import Time
+from rclpy.duration import Duration
 import numpy as np
 import math
 from enum import Enum
@@ -446,7 +447,12 @@ class AprilTagNavigator(Node):
             tag_angle_map = robot_yaw + angle_camera
 
             try:
-                transform = self.tf_buffer.lookup_transform('map', tag_frame, ...)
+                transform = self.tf_buffer.lookup_transform(
+                'map',
+                tag_frame,
+                Time(),                      # ← latest transform
+                timeout=Duration(seconds=0.2)
+            )
                 tag_x = transform.transform.translation.x  # Actual 3D position
                 tag_y = transform.transform.translation.y
                 if tag_id not in self.discovered_tags:
