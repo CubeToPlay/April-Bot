@@ -587,6 +587,7 @@ class AprilTagNavigator(Node):
             self.current_path = []
             self.path_index = 0
             self.frontier_target = None 
+            self.publish_path(self.current_path)
 
             # Force replanning
             if self.state in (
@@ -851,7 +852,7 @@ class AprilTagNavigator(Node):
             throttle_duration_sec=2.0
         )
         
-        return candidates[:5]
+        return candidates[]
     
     def publish_path(self, path):
         """Publish path for visualization
