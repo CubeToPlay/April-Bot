@@ -69,6 +69,7 @@ class AprilTagNavigator(Node):
         self.map_pause_end_time = None
         self.map_pause_duration = 1.5  # Increased from 0.8 to 1.5 seconds
         self.last_map_size = (0, 0)  # Track map dimensions
+        self.last_map_info = None
 
         # TF2 for SLAM localization
         try:
@@ -563,47 +564,49 @@ class AprilTagNavigator(Node):
         """Store SLAM map
         The map metadata (width, height, resolution, etc.) is stored in order for coordinate conversions (between map and world)
         """
-        # Convert the flat array to 2D grid. 
-        new_width = msg.info.width
-        new_height = msg.info.height
-
-        map_size_changed = (
-            self.last_map_size[0] != 0 and  # Not first map
-            (new_width != self.last_map_size[0] or new_height != self.last_map_size[1])
+        new_info = (
+            msg.info.width,
+            msg.info.height,
+            msg.info.resolution,
+            msg.info.origin.position.x,
+            msg.info.origin.position.y
         )
 
-        self.map_data = np.array(msg.data).reshape((msg.info.height, msg.info.width))
-        self.map_resolution = msg.info.resolution
-        self.map_origin = {
-            'x': msg.info.origin.position.x,
-            'y': msg.info.origin.position.y
-        }
-        self.map_width = new_width
-        self.map_height = new_height
-        self.last_map_size = (new_width, new_height)
-        if map_size_changed:
+        if self.last_map_info is not None and new_info != self.last_map_info:
             self.get_logger().warning(
-                f"Map resized from {self.last_map_size[0]}x{self.last_map_size[1]} "
-                f"to {new_width}x{new_height}, STOPPING robot",
-                throttle_duration_sec=1.0
+                "Map changed (resize/origin shift) — pausing navigation",
+                throttle_duration_sec=2.0
             )
+
             self.map_pause_active = True
             self.map_pause_end_time = (
                 self.get_clock().now().nanoseconds / 1e9
                 + self.map_pause_duration
             )
 
-            # Stop immediately
-            stop = Twist()
-            stop.linear.x = 0.0
-            stop.angular.z = 0.0
-            self.cmd_vel_pub.publish(stop)
+            # Hard stop immediately
+            self.cmd_vel_pub.publish(Twist())
 
             # Force replanning
-            if self.state in (NavigationState.NAVIGATING, NavigationState.TRACKING):
-                self.current_path = []
+            if self.state in (
+                NavigationState.NAVIGATING,
+                NavigationState.TRACKING
+            ):
                 self.state = NavigationState.PLANNING
-                self.get_logger().info("Cleared path, will replan after map stabilizes")
+
+        self.last_map_info = new_info
+
+        # Store map normally
+        self.map_data = np.array(msg.data).reshape(
+            (msg.info.height, msg.info.width)
+        )
+        self.map_resolution = msg.info.resolution
+        self.map_origin = {
+            'x': msg.info.origin.position.x,
+            'y': msg.info.origin.position.y
+        }
+        self.map_width = msg.info.width
+        self.map_height = msg.info.height
 
     def scan_callback(self, msg):
         """Process LiDAR"""
