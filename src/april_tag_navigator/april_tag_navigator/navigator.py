@@ -61,6 +61,9 @@ class AprilTagNavigator(Node):
         self.cancel_command = self.get_parameter('cancel_command').value
         """When goal_id = 11, it means that the current search should be cancelled and the robot should be idle."""
 
+        self.min_wall_distance = self.get_parameter('min_wall_distance').value
+        self.critical_distance = self.get_parameter('critical_distance').value
+
         self.map_pause_active = False
         self.map_pause_end_time = None
         self.map_pause_duration = 0.8
