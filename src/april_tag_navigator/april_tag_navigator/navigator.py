@@ -622,7 +622,7 @@ class AprilTagNavigator(Node):
                 
                 # Treat unknown as free if allowed
                 if allow_unknown and cell_value == -1:
-                    continue
+                    return True
                 
                 if cell_value >= 50:  # obstacle
                     return False
