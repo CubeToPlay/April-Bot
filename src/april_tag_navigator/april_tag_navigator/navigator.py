@@ -635,7 +635,7 @@ class AprilTagNavigator(Node):
             self.get_logger().warning('No map available for planning')
             return None
         
-        ROBOT_RADIUS = int(10 / self.map_resolution)
+        ROBOT_RADIUS = int(0.25 / self.map_resolution)
         
         # Convert the start and goal locations to map coordinates
         start_mx, start_my = self.world_to_map(start_x, start_y)
