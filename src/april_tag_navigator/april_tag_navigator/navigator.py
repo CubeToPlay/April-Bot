@@ -1026,7 +1026,8 @@ class AprilTagNavigator(Node):
                         f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
                         throttle_duration_sec=1.0
                     )
-                    
+                    twist.linear.x = 0.0
+                    twist.angular.z = 0.0
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
                         frontier[1], frontier[2]
