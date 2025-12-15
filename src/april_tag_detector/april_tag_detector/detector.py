@@ -14,7 +14,7 @@ class AprilTagDetector(Node):
     def __init__(self):
         super().__init__('detector')
         
-        self.declare_parameter('tag_size', 0.5) # meters
+        self.declare_parameter('tag_size', 1.0) # meters
         self.declare_parameter('camera_topic', '/camera/image_raw')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('publish_tf', True)
@@ -287,9 +287,12 @@ class AprilTagDetector(Node):
         debug_image = image.copy()
         
         # Threshold for finding contours
-        blur = cv2.GaussianBlur(gray, (5,5), 0)
-        _, thresh = cv2.threshold(blur, 0, 255,
-                                cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11, 2
+        )
 
         contours, hierarchy = cv2.findContours(
             thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
@@ -302,8 +305,10 @@ class AprilTagDetector(Node):
 
         for i, cnt in enumerate(contours):
             peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.015 * peri, True)
-            if len(approx) < 4:
+            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+            area = cv2.contourArea(cnt)
+            
+            if area < 1500:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
@@ -312,9 +317,7 @@ class AprilTagDetector(Node):
             if len(approx) != 4 or not cv2.isContourConvex(approx):
                 continue
 
-            rect = cv2.minAreaRect(cnt)
-            box = cv2.boxPoints(rect)
-            quad = self.order_points(box)
+            quad = self.order_points(approx.reshape(4, 2))
 
             # Square-ish check
             w = np.linalg.norm(quad[0] - quad[1])
@@ -334,8 +337,8 @@ class AprilTagDetector(Node):
             
             # *** KEY FIX: Warp from original gray, not from thresh ***
             warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-            # if warped.std() < 20:
-            #     continue
+            if warped.std() < 20:
+                continue
             # *** THEN apply a clean threshold to the warped image ***
             # Try different threshold methods to see which works best:
             
