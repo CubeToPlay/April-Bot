@@ -8,6 +8,7 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
 from slam_toolbox.srv import SerializePoseGraph
 from visualization_msgs.msg import Marker, MarkerArray
+from rclpy.time import Time
 import numpy as np
 import math
 from enum import Enum
@@ -219,7 +220,7 @@ class AprilTagNavigator(Node):
             return self.tf_buffer.can_transform(
                 'map',
                 'base_footprint',
-                rclpy.time.Time(),
+                Time(seconds=0),
                 timeout=rclpy.duration.Duration(seconds=0.2)
             )
         except Exception:
@@ -235,7 +236,7 @@ class AprilTagNavigator(Node):
             transform = self.tf_buffer.lookup_transform(
                 'map',
                 'base_footprint',
-                rclpy.time.Time(),  # Get latest
+                Time(seconds=0),  # Get latest
                 timeout=rclpy.duration.Duration(seconds=0.5)
             )
             
@@ -532,7 +533,7 @@ class AprilTagNavigator(Node):
             transform = self.tf_buffer.lookup_transform(
                 'map', 
                 'base_footprint',
-                rclpy.time.Time(),  # Latest
+                Time(seconds=0),  # Latest
                 timeout=rclpy.duration.Duration(seconds=1.0)
             )
             
