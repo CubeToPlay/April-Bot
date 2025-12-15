@@ -72,6 +72,9 @@ class AprilTagNavigator(Node):
         self.last_map_size = (0, 0)  # Track map dimensions
         self.last_map_info = None
 
+        self.last_pose_time = self.get_clock().now()
+
+
         # TF2 for SLAM localization
         try:
             use_sim = self.get_parameter('use_sim_time').value
@@ -395,24 +398,6 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'Planning path to KNOWN tag {self.target_tag_id}')
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
-    
-    def raycast_to_wall(self, x0, y0, angle, max_range=5.0, step=0.05):
-        """Cast a ray until it hits a wall"""
-        dist = 0.0
-        while dist < max_range:
-            x = x0 + dist * math.cos(angle)
-            y = y0 + dist * math.sin(angle)
-
-            mx, my = self.world_to_map(x, y)
-            if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
-                return None
-
-            if self.map_data[my, mx] >= 50:  # wall hit
-                return x - 0.05 * math.cos(angle), y - 0.05 * math.sin(angle)
-
-            dist += step
-
-        return None
 
 
     def detection_callback(self, msg):
@@ -549,6 +534,7 @@ class AprilTagNavigator(Node):
                 'y': transform.transform.translation.y,
                 'orientation': transform.transform.rotation
             }
+            self.last_pose_time = self.get_clock().now()
             
             # Only log if position actually changed
             if not hasattr(self, 'last_logged_pose') or \
@@ -565,6 +551,9 @@ class AprilTagNavigator(Node):
                 f'TF lookup failed: {str(ex)[:100]}',
                 throttle_duration_sec=2.0
             )
+    def pose_is_fresh(self, timeout_sec=0.5):
+        age = (self.get_clock().now() - self.last_pose_time).nanoseconds * 1e-9
+        return age < timeout_sec
     
     def map_callback(self, msg):
         """Store SLAM map
@@ -1125,6 +1114,12 @@ class AprilTagNavigator(Node):
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
         
         # Publish the velocity of the robot
+        if not self.pose_is_fresh():
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            self.get_logger().warn("Pose stale — stopping robot")
+            return
+
         self.cmd_vel_pub.publish(twist)
 
 
