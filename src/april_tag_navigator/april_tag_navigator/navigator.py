@@ -819,17 +819,28 @@ class AprilTagNavigator(Node):
                 throttle_duration_sec=2.0
             )
             return None
+        clusters = {}
+        for dist, x, y in candidates:
+            key = (round(x, 1), round(y, 1))
+            clusters.setdefault(key, []).append((dist, x, y))
+
+        # Choose centroid of largest cluster
+        best_cluster = max(clusters.values(), key=len)
+        avg_x = sum(p[1] for p in best_cluster) / len(best_cluster)
+        avg_y = sum(p[2] for p in best_cluster) / len(best_cluster)
+
+        return [(0, avg_x, avg_y)]
 
         # Sort by distance and pick closest
-        candidates.sort()
+        # candidates.sort()
         
-        self.get_logger().info(
-            f"Found {len(candidates)} frontier candidates, "
-            f"closest at ({candidates[0][1]:.2f}, {candidates[0][2]:.2f})",
-            throttle_duration_sec=2.0
-        )
+        # self.get_logger().info(
+        #     f"Found {len(candidates)} frontier candidates, "
+        #     f"closest at ({candidates[0][1]:.2f}, {candidates[0][2]:.2f})",
+        #     throttle_duration_sec=2.0
+        # )
         
-        return candidates
+        # return candidates
     
     def publish_path(self, path):
         """Publish path for visualization
