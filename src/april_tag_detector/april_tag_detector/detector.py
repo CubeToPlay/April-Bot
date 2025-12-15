@@ -303,9 +303,7 @@ class AprilTagDetector(Node):
         for i, cnt in enumerate(contours):
             peri = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.015 * peri, True)
-            area = cv2.contourArea(cnt)
-            
-            if area < 300:
+            if len(approx) < 4:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
@@ -314,7 +312,9 @@ class AprilTagDetector(Node):
             if len(approx) != 4 or not cv2.isContourConvex(approx):
                 continue
 
-            quad = self.order_points(approx.reshape(4, 2))
+            rect = cv2.minAreaRect(cnt)
+            box = cv2.boxPoints(rect)
+            quad = self.order_points(box)
 
             # Square-ish check
             w = np.linalg.norm(quad[0] - quad[1])
