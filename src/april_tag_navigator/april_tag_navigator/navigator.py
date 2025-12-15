@@ -629,7 +629,7 @@ class AprilTagNavigator(Node):
         
         return True
 
-    def astar_planning(self, start_x, start_y, goal_x, goal_y, allow_unknown=False):
+    def astar_planning(self, start_x, start_y, goal_x, goal_y):
         """A* path planning algorithm"""
         if self.map_data is None:
             self.get_logger().warning('No map available for planning')
@@ -703,7 +703,7 @@ class AprilTagNavigator(Node):
                 neighbor = (current[0] + dx, current[1] + dy)
                 
                 # Path planning will skip neighbors with obstacles or neighbors that have been visited already
-                if not self.is_free(neighbor[0], neighbor[1], radius=ROBOT_RADIUS, allow_unknown=allow_unknown):
+                if not self.is_free(neighbor[0], neighbor[1], radius=ROBOT_RADIUS):
                     continue
                 
                 if neighbor in visited:
@@ -1007,7 +1007,7 @@ class AprilTagNavigator(Node):
                     twist.angular.z = 0.0
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
-                        frontier[1], frontier[2], allow_unknown=True
+                        frontier[1], frontier[2]
                     )
                     
                     if self.current_path:
