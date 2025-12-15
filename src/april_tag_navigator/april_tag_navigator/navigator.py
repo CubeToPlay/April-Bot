@@ -703,7 +703,7 @@ class AprilTagNavigator(Node):
                 neighbor = (current[0] + dx, current[1] + dy)
                 
                 # Path planning will skip neighbors with obstacles or neighbors that have been visited already
-                if not self.is_free(neighbor[0], neighbor[1], radius=ROBOT_RADIUS):
+                if not self.is_free(neighbor[0], neighbor[1], radius=ROBOT_RADIUS, allow_unknown=True):
                     continue
                 
                 if neighbor in visited:
@@ -821,15 +821,17 @@ class AprilTagNavigator(Node):
             return None
 
         # Sort by distance and pick closest
-        candidates.sort()
-        
-        self.get_logger().info(
-            f"Found {len(candidates)} frontier candidates, "
-            f"closest at ({candidates[0][1]:.2f}, {candidates[0][2]:.2f})",
-            throttle_duration_sec=2.0
-        )
-        
-        return candidates
+        clusters = {}
+        for dist, x, y in candidates:
+            key = (round(x, 1), round(y, 1))
+            clusters.setdefault(key, []).append((dist, x, y))
+
+        # Choose centroid of largest cluster
+        best_cluster = max(clusters.values(), key=len)
+        avg_x = sum(p[1] for p in best_cluster) / len(best_cluster)
+        avg_y = sum(p[2] for p in best_cluster) / len(best_cluster)
+
+        return [(0, avg_x, avg_y)]
     
     def publish_path(self, path):
         """Publish path for visualization
@@ -1000,7 +1002,7 @@ class AprilTagNavigator(Node):
                 path_found = False
                 for i, frontier in enumerate(frontiers):  # Try top 5 closest
                     self.get_logger().info(
-                        f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
+                        f'Trying frontier: ({frontier[1]:.2f}, {frontier[2]:.2f})',
                         throttle_duration_sec=1.0
                     )
                     twist.linear.x = 0.0
