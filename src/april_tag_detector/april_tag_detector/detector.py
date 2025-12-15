@@ -14,7 +14,7 @@ class AprilTagDetector(Node):
     def __init__(self):
         super().__init__('detector')
         
-        self.declare_parameter('tag_size', 1.0) # meters
+        self.declare_parameter('tag_size', 0.5) # meters
         self.declare_parameter('camera_topic', '/camera/image_raw')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('publish_tf', True)
