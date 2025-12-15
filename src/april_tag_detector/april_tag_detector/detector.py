@@ -14,7 +14,7 @@ class AprilTagDetector(Node):
     def __init__(self):
         super().__init__('detector')
         
-        self.declare_parameter('tag_size', 0.5) # meters
+        self.declare_parameter('tag_size', 1.0) # meters
         self.declare_parameter('camera_topic', '/camera/image_raw')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('publish_tf', True)
@@ -109,14 +109,8 @@ class AprilTagDetector(Node):
                 bits_8x8[y, x] = 1 if mean_val < 128 else 0
         
         # Normalize polarity: corners should be BLACK (1) - part of the border
-        border = np.concatenate([
-            bits_8x8[0, :],
-            bits_8x8[7, :],
-            bits_8x8[:, 0],
-            bits_8x8[:, 7],
-        ])
-
-        if np.mean(border) < 0.7:
+        corner_bits = [bits_8x8[0,0], bits_8x8[0,7], bits_8x8[7,0], bits_8x8[7,7]]
+        if np.mean(corner_bits) < 0.5:  # If corners are mostly white
             bits_8x8 = 1 - bits_8x8
         
         # Extract inner 6x6 data region (skip the 1-cell border)
@@ -293,12 +287,9 @@ class AprilTagDetector(Node):
         debug_image = image.copy()
         
         # Threshold for finding contours
-        thresh = cv2.adaptiveThreshold(
-            gray, 255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11, 2
-        )
+        blur = cv2.GaussianBlur(gray, (5,5), 0)
+        _, thresh = cv2.threshold(blur, 0, 255,
+                                cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         contours, hierarchy = cv2.findContours(
             thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
@@ -311,10 +302,10 @@ class AprilTagDetector(Node):
 
         for i, cnt in enumerate(contours):
             peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+            approx = cv2.approxPolyDP(cnt, 0.015 * peri, True)
             area = cv2.contourArea(cnt)
             
-            if area < 300:
+            if area < 1500:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
@@ -328,7 +319,7 @@ class AprilTagDetector(Node):
             # Square-ish check
             w = np.linalg.norm(quad[0] - quad[1])
             h = np.linalg.norm(quad[0] - quad[3])
-            if h == 0 or not 0.6 < w / h < 1.6:
+            if h > 0 and not 0.6 < w / h < 1.6:
                 continue
 
             # Warp - IMPORTANT: Warp from ORIGINAL GRAY, not from thresh
@@ -343,8 +334,8 @@ class AprilTagDetector(Node):
             
             # *** KEY FIX: Warp from original gray, not from thresh ***
             warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
-            if warped.std() < 20:
-                continue
+            # if warped.std() < 20:
+            #     continue
             # *** THEN apply a clean threshold to the warped image ***
             # Try different threshold methods to see which works best:
             
