@@ -582,6 +582,11 @@ class AprilTagNavigator(Node):
             # Hard stop immediately
             self.cmd_vel_pub.publish(Twist())
 
+            self.update_robot_pose()
+        
+            self.current_path = []
+            self.path_index = 0
+
             # Force replanning
             if self.state in (
                 NavigationState.NAVIGATING,
@@ -656,6 +661,22 @@ class AprilTagNavigator(Node):
         # Convert the start and goal locations to map coordinates
         start_mx, start_my = self.world_to_map(start_x, start_y)
         goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
+
+        if not (0 <= start_mx < self.map_width and 0 <= start_my < self.map_height):
+            self.get_logger().error(
+                f'Start position ({start_x:.2f}, {start_y:.2f}) -> '
+                f'map coords ({start_mx}, {start_my}) out of bounds! '
+                f'Map size: {self.map_width}x{self.map_height}'
+            )
+            return None
+            
+        if not (0 <= goal_mx < self.map_width and 0 <= goal_my < self.map_height):
+            self.get_logger().error(
+                f'Goal position ({goal_x:.2f}, {goal_y:.2f}) -> '
+                f'map coords ({goal_mx}, {goal_my}) out of bounds! '
+                f'Map size: {self.map_width}x{self.map_height}'
+            )
+            return None
 
         # Check if the starting location is valid (if it is free)
         if not self.is_free(start_mx, start_my):
