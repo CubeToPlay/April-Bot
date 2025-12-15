@@ -221,7 +221,7 @@ class AprilTagNavigator(Node):
             return self.tf_buffer.can_transform(
                 'map',
                 'base_footprint',
-                Time(seconds=0),
+                Time(),
                 timeout=rclpy.duration.Duration(seconds=0.2)
             )
         except Exception:
@@ -237,7 +237,7 @@ class AprilTagNavigator(Node):
             transform = self.tf_buffer.lookup_transform(
                 'map',
                 'base_footprint',
-                Time(seconds=0),  # Get latest
+                Time(),  # Get latest
                 timeout=rclpy.duration.Duration(seconds=0.5)
             )
             
@@ -534,7 +534,7 @@ class AprilTagNavigator(Node):
             transform = self.tf_buffer.lookup_transform(
                 'map', 
                 'base_footprint',
-                Time(seconds=0),  # Latest
+                Time(),  # Latest
                 timeout=rclpy.duration.Duration(seconds=1.0)
             )
             
