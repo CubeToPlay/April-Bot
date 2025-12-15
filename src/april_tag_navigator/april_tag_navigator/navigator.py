@@ -66,7 +66,9 @@ class AprilTagNavigator(Node):
 
         self.map_pause_active = False
         self.map_pause_end_time = None
-        self.map_pause_duration = 0.8
+        self.map_pause_duration = 1.5  # Increased from 0.8 to 1.5 seconds
+        self.last_map_size = (0, 0)  # Track map dimensions
+
         # TF2 for SLAM localization
         try:
             use_sim = self.get_parameter('use_sim_time').value
@@ -183,6 +185,8 @@ class AprilTagNavigator(Node):
 
         self.nav_timer = None
         """Timer to run the navigation loop to move the robot"""
+
+        self.marker_timer = None
         
         # Load database
         self.load_tag_database()
@@ -281,6 +285,8 @@ class AprilTagNavigator(Node):
             self.navigation_loop
         )
 
+        self.marker_timer = self.create_timer(0.5, self.publish_tag_markers)
+
         # Ensure robot starts stopped
         twist = Twist()
         self.cmd_vel_pub.publish(twist)
@@ -308,6 +314,8 @@ class AprilTagNavigator(Node):
             text_marker.pose.position.x = pos['x']
             text_marker.pose.position.y = pos['y']
             text_marker.pose.position.z = 0.5  # Above the cube
+
+            text_marker.lifetime = rclpy.duration.Duration(seconds=0).to_msg()
             
             text_marker.scale.z = 0.2  # Text size
             text_marker.color.r = 1.0
@@ -569,10 +577,10 @@ class AprilTagNavigator(Node):
         new_width = msg.info.width
         new_height = msg.info.height
 
-        resized = (
-                self.map_width != 0 and
-                (new_width != self.map_width or new_height != self.map_height)
-            )
+        map_size_changed = (
+            self.last_map_size[0] != 0 and  # Not first map
+            (new_width != self.last_map_size[0] or new_height != self.last_map_size[1])
+        )
 
         self.map_data = np.array(msg.data).reshape((msg.info.height, msg.info.width))
         self.map_resolution = msg.info.resolution
@@ -582,10 +590,12 @@ class AprilTagNavigator(Node):
         }
         self.map_width = new_width
         self.map_height = new_height
-        if resized:
+        self.last_map_size = (new_width, new_height)
+        if map_size_changed:
             self.get_logger().warning(
-                f"Map resized to {new_width}x{new_height}, pausing navigation",
-                throttle_duration_sec=2.0
+                f"Map resized from {self.last_map_size[0]}x{self.last_map_size[1]} "
+                f"to {new_width}x{new_height}, STOPPING robot",
+                throttle_duration_sec=1.0
             )
             self.map_pause_active = True
             self.map_pause_end_time = (
@@ -595,14 +605,15 @@ class AprilTagNavigator(Node):
 
             # Stop immediately
             stop = Twist()
+            stop.linear.x = 0.0
+            stop.angular.z = 0.0
             self.cmd_vel_pub.publish(stop)
 
             # Force replanning
-            if self.state in (
-                NavigationState.NAVIGATING,
-                NavigationState.TRACKING
-            ):
+            if self.state in (NavigationState.NAVIGATING, NavigationState.TRACKING):
+                self.current_path = []
                 self.state = NavigationState.PLANNING
+                self.get_logger().info("Cleared path, will replan after map stabilizes")
 
     def scan_callback(self, msg):
         """Process LiDAR"""
@@ -925,6 +936,8 @@ class AprilTagNavigator(Node):
         if self.map_pause_active:
             if now < self.map_pause_end_time:
                 # Hold still
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
                 return
             else:
