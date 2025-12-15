@@ -322,7 +322,7 @@ class AprilTagDetector(Node):
             # Square-ish check
             w = np.linalg.norm(quad[0] - quad[1])
             h = np.linalg.norm(quad[0] - quad[3])
-            if not 0.6 < w / h < 1.6:
+            if h == 0 or not 0.6 < w / h < 1.6:
                 continue
 
             # Warp - IMPORTANT: Warp from ORIGINAL GRAY, not from thresh
