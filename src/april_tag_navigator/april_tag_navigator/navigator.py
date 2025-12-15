@@ -573,29 +573,6 @@ class AprilTagNavigator(Node):
                 throttle_duration_sec=2.0
             )
 
-            self.map_pause_active = True
-            self.map_pause_end_time = (
-                self.get_clock().now().nanoseconds / 1e9
-                + self.map_pause_duration
-            )
-
-            # Hard stop immediately
-            self.cmd_vel_pub.publish(Twist())
-
-            self.update_robot_pose()
-        
-            self.current_path = []
-            self.path_index = 0
-            self.frontier_target = None 
-            self.publish_path(self.current_path)
-
-            # Force replanning
-            if self.state in (
-                NavigationState.NAVIGATING,
-                NavigationState.TRACKING
-            ):
-                self.state = NavigationState.PLANNING
-
         self.last_map_info = new_info
 
         # Store map normally
@@ -945,30 +922,30 @@ class AprilTagNavigator(Node):
         twist = Twist()
         twist.linear.x = 0.0
         twist.angular.z = 0.0
-        now = self.get_clock().now().nanoseconds / 1e9
-        if self.map_pause_active:
-            if now < self.map_pause_end_time:
-                # Hold still and DO NOT EXECUTE ANY STATE LOGIC
-                self.cmd_vel_pub.publish(twist)
-                return  # Exit completely - no state processing
-            else:
-                # Pause ended - prepare for clean restart
-                self.map_pause_active = False
-                self.get_logger().info("Map stabilized, resuming navigation")
+        # now = self.get_clock().now().nanoseconds / 1e9
+        # if self.map_pause_active:
+        #     if now < self.map_pause_end_time:
+        #         # Hold still and DO NOT EXECUTE ANY STATE LOGIC
+        #         self.cmd_vel_pub.publish(twist)
+        #         return  # Exit completely - no state processing
+        #     else:
+        #         # Pause ended - prepare for clean restart
+        #         self.map_pause_active = False
+        #         self.get_logger().info("Map stabilized, resuming navigation")
                 
-                # Force fresh pose and replan
-                self.update_robot_pose()
-                self.current_path = []
-                self.path_index = 0
+        #         # Force fresh pose and replan
+        #         self.update_robot_pose()
+        #         self.current_path = []
+        #         self.path_index = 0
                 
-                # Force replanning if we have a target
-                if self.target_tag_id is not None and self.state != NavigationState.IDLE:
-                    self.state = NavigationState.PLANNING
-                    self.get_logger().info("Forcing replan after map change")
+        #         # Force replanning if we have a target
+        #         if self.target_tag_id is not None and self.state != NavigationState.IDLE:
+        #             self.state = NavigationState.PLANNING
+        #             self.get_logger().info("Forcing replan after map change")
                 
-                # Exit this loop iteration - let next iteration handle fresh planning
-                self.cmd_vel_pub.publish(twist)
-                return
+        #         # Exit this loop iteration - let next iteration handle fresh planning
+        #         self.cmd_vel_pub.publish(twist)
+        #         return
         
         # Check for obstacles
         obstacle_detected, min_distance = self.check_obstacle_ahead()
