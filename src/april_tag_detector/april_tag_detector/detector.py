@@ -293,6 +293,9 @@ class AprilTagDetector(Node):
             cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
 
+        kernel = np.ones((5, 5), np.uint8)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+
 
         contours, hierarchy = cv2.findContours(
             thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
@@ -324,7 +327,14 @@ class AprilTagDetector(Node):
             h = np.linalg.norm(quad[0] - quad[3])
             if h > 0 and not 0.6 < w / h < 1.6:
                 continue
+            
+            mask = np.zeros_like(gray)
+            cv2.drawContours(mask, [approx], -1, 255, -1)
+            mean_intensity = cv2.mean(gray, mask=mask)[0]
 
+            # AprilTag border is dark
+            if mean_intensity > 120:
+                continue
             # Warp - IMPORTANT: Warp from ORIGINAL GRAY, not from thresh
             dst = np.array([
                 [0, 0],
