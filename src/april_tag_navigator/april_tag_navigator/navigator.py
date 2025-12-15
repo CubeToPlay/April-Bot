@@ -942,12 +942,12 @@ class AprilTagNavigator(Node):
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
+        twist.linear.x = 0.0
+        twist.angular.z = 0.0
         now = self.get_clock().now().nanoseconds / 1e9
         if self.map_pause_active:
             if now < self.map_pause_end_time:
                 # Hold still and DO NOT EXECUTE ANY STATE LOGIC
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
                 return  # Exit completely - no state processing
             else:
@@ -966,8 +966,6 @@ class AprilTagNavigator(Node):
                     self.get_logger().info("Forcing replan after map change")
                 
                 # Exit this loop iteration - let next iteration handle fresh planning
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
                 return
         
@@ -1019,6 +1017,7 @@ class AprilTagNavigator(Node):
                 if not frontiers:
                     self.get_logger().warning('No frontiers found, staying idle')
                     self.state = NavigationState.IDLE
+                    self.cmd_vel_pub.publish(twist)
                     return
                 path_found = False
                 for i, frontier in enumerate(frontiers[:5]):  # Try top 5 closest
@@ -1053,6 +1052,7 @@ class AprilTagNavigator(Node):
             if self.target_tag_visible:
                 self.state = NavigationState.TRACKING
                 self.get_logger().info('Switching to visual tracking')
+                self.cmd_vel_pub.publish(twist)
                 return
             # If the target tag is not visible, the robot should continue to follow the planned path
             nav_info = self.follow_path()
@@ -1063,6 +1063,7 @@ class AprilTagNavigator(Node):
                     self.state = NavigationState.TRACKING
                 else:
                     self.state = NavigationState.PLANNING
+                self.cmd_vel_pub.publish(twist)
                 return
             
             # Robot should determine the distance and angle to the next waypoint and move towards it.
@@ -1115,6 +1116,7 @@ class AprilTagNavigator(Node):
             if not self.target_tag_visible:
                 self.state = NavigationState.PLANNING
                 self.get_logger().warning('Lost tag, replanning')
+                self.cmd_vel_pub.publish(twist)
                 return
             
             # If the robot has reached the april tag, change the state to REACHED and publish that the tag was reached
@@ -1161,7 +1163,6 @@ class AprilTagNavigator(Node):
             twist.linear.x = 0.0
             twist.angular.z = 0.0
             self.get_logger().warn("Pose stale — stopping robot")
-            return
 
         self.cmd_vel_pub.publish(twist)
 
