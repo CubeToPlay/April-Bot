@@ -998,7 +998,7 @@ class AprilTagNavigator(Node):
                     self.cmd_vel_pub.publish(twist)
                     return
                 path_found = False
-                for i, frontier in enumerate(frontiers[:5]):  # Try top 5 closest
+                for i, frontier in enumerate(frontiers):  # Try top 5 closest
                     self.get_logger().info(
                         f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
                         throttle_duration_sec=1.0
@@ -1041,6 +1041,8 @@ class AprilTagNavigator(Node):
                     self.state = NavigationState.TRACKING
                 else:
                     self.state = NavigationState.PLANNING
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
                 return
             
