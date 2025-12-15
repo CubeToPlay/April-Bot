@@ -444,20 +444,9 @@ class AprilTagNavigator(Node):
             tag_angle_map = robot_yaw + angle_camera
 
             try:
-                transform = self.tf_buffer.lookup_transform(
-                    'map',
-                    tag_frame,
-                    rclpy.time.Time(),
-                    timeout=rclpy.duration.Duration(seconds=0.2)
-                )
-                hit = self.raycast_to_wall(
-                    self.robot_pose['x'],
-                    self.robot_pose['y'],
-                    tag_angle_map
-                )
-                if hit is None:
-                    return
-                tag_x, tag_y = hit
+                transform = self.tf_buffer.lookup_transform('map', tag_frame, ...)
+                tag_x = transform.transform.translation.x  # Actual 3D position
+                tag_y = transform.transform.translation.y
                 if tag_id not in self.discovered_tags:
                     self.discovered_tags[tag_id] = {
                         'x': tag_x,
