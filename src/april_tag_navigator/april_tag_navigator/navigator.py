@@ -7,6 +7,7 @@ from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
 from slam_toolbox.srv import SerializePoseGraph
+from visualization_msgs.msg import Marker, MarkerArray
 import numpy as np
 import math
 from enum import Enum
@@ -111,6 +112,7 @@ class AprilTagNavigator(Node):
         """Publishes A* path for visualization in RViz. Used for debugging path."""
         self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
+        self.marker_pub = self.create_publisher(MarkerArray, '/apriltag_markers', 10)
 
         # Client
         self.serialize_client = self.create_client(
@@ -167,6 +169,7 @@ class AprilTagNavigator(Node):
         # LiDAR
         self.laser_ranges = None
         """Array of distance measurements from LiDAR"""
+        self.last_scan_time = None
 
         # Timers
         self.map_wait_timer = self.create_timer(1.0, self.wait_for_map_timer)
@@ -281,6 +284,91 @@ class AprilTagNavigator(Node):
 
         # Initialize state machine
         self.state = NavigationState.IDLE
+
+    def publish_tag_markers(self):
+        """Publish visualization markers for all discovered tags"""
+        if not self.discovered_tags:
+            return
+
+        marker_array = MarkerArray()
+        
+        for tag_id, pos in self.discovered_tags.items():
+            # Create text marker
+            text_marker = Marker()
+            text_marker.header.frame_id = "map"
+            text_marker.header.stamp = self.get_clock().now().to_msg()
+            text_marker.ns = "tag_labels"
+            text_marker.id = tag_id * 2
+            text_marker.type = Marker.TEXT_VIEW_FACING
+            text_marker.action = Marker.ADD
+            
+            text_marker.pose.position.x = pos['x']
+            text_marker.pose.position.y = pos['y']
+            text_marker.pose.position.z = 0.5  # Above the cube
+            
+            text_marker.scale.z = 0.2  # Text size
+            text_marker.color.r = 1.0
+            text_marker.color.g = 1.0
+            text_marker.color.b = 1.0
+            text_marker.color.a = 1.0
+            text_marker.text = f"Tag {tag_id}"
+            
+            # Create cube marker
+            cube_marker = Marker()
+            cube_marker.header.frame_id = "map"
+            cube_marker.header.stamp = self.get_clock().now().to_msg()
+            cube_marker.ns = "tag_cubes"
+            cube_marker.id = tag_id * 2 + 1
+            cube_marker.type = Marker.CUBE
+            cube_marker.action = Marker.ADD
+            
+            cube_marker.pose.position.x = pos['x']
+            cube_marker.pose.position.y = pos['y']
+            cube_marker.pose.position.z = 0.15
+            cube_marker.pose.orientation.w = 1.0
+            
+            cube_marker.scale.x = 0.2
+            cube_marker.scale.y = 0.2
+            cube_marker.scale.z = 0.3
+            
+            # Color based on whether it's the target
+            if tag_id == self.target_tag_id:
+                cube_marker.color.r = 1.0
+                cube_marker.color.g = 0.0
+                cube_marker.color.b = 0.0
+            else:
+                cube_marker.color.r = 0.0
+                cube_marker.color.g = 1.0
+                cube_marker.color.b = 0.0
+            cube_marker.color.a = 0.8
+            
+            marker_array.markers.append(text_marker)
+            marker_array.markers.append(cube_marker)
+        
+        self.marker_pub.publish(marker_array)
+
+    def check_obstacle_ahead(self):
+        """Check if there's an obstacle in front using LiDAR"""
+        if self.laser_ranges is None:
+            return False, float('inf')
+        
+        # Check front 60 degrees (30 degrees each side)
+        num_ranges = len(self.laser_ranges)
+        front_angle = 30  # degrees
+        samples_per_side = int((front_angle / 360.0) * num_ranges)
+        
+        # Front center
+        front_ranges = np.concatenate([
+            self.laser_ranges[:samples_per_side],
+            self.laser_ranges[-samples_per_side:]
+        ])
+        
+        min_dist = np.min(front_ranges)
+        
+        critical = min_dist < self.critical_distance
+        warning = min_dist < self.min_wall_distance
+        
+        return critical or warning, min_dist
 
     def goal_callback(self, msg):
         """Receive target tag ID"""
@@ -518,6 +606,7 @@ class AprilTagNavigator(Node):
         self.laser_ranges = np.array(msg.ranges)
         # This replaces the inf and nan values with max range (which is what happens when no obstacle is detected in the given direction)
         self.laser_ranges = np.where(np.isfinite(self.laser_ranges), self.laser_ranges, msg.range_max)
+        self.last_scan_time = self.get_clock().now()
 
     def world_to_map(self, x, y):
         """Convert world to map coordinates"""
@@ -838,6 +927,9 @@ class AprilTagNavigator(Node):
             else:
                 self.map_pause_active = False
                 self.get_logger().info("Map stabilized, resuming navigation")
+        
+        # Check for obstacles
+        obstacle_detected, min_distance = self.check_obstacle_ahead()
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
@@ -932,16 +1024,38 @@ class AprilTagNavigator(Node):
             # Robot should determine the distance and angle to the next waypoint and move towards it.
             distance, angle_diff = nav_info
             
-            if abs(angle_diff) > 0.5:
-                twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
-                twist.linear.x = 0.0 
-            elif abs(angle_diff) > 0.2:  # 11-28 degrees
-                # Turn while moving slowly
-                twist.angular.z = self.angular_speed * (angle_diff / abs(angle_diff))
-                twist.linear.x = self.linear_speed * 0.5
+            if obstacle_detected:
+                if min_distance < self.critical_distance:
+                    # Emergency stop
+                    twist.linear.x = 0.0
+                    twist.angular.z = 0.0
+                    self.get_logger().warning(
+                        f'EMERGENCY STOP! Obstacle at {min_distance:.2f}m',
+                        throttle_duration_sec=1.0
+                    )
+                else:
+                    # Slow down near obstacles
+                    speed_factor = (min_distance - self.critical_distance) / \
+                                 (self.min_wall_distance - self.critical_distance)
+                    speed_factor = max(0.2, min(1.0, speed_factor))
+                    
+                    if abs(angle_diff) > 0.5:
+                        twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                        twist.linear.x = 0.0 
+                    else:
+                        twist.linear.x = self.linear_speed * speed_factor
+                        twist.angular.z = self.angular_speed * angle_diff * 2.0
             else:
-                twist.linear.x = self.linear_speed
-                twist.angular.z = self.angular_speed * angle_diff * 2.0
+                # Normal navigation
+                if abs(angle_diff) > 0.5:
+                    twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                    twist.linear.x = 0.0 
+                elif abs(angle_diff) > 0.2:
+                    twist.angular.z = self.angular_speed * (angle_diff / abs(angle_diff))
+                    twist.linear.x = self.linear_speed * 0.5
+                else:
+                    twist.linear.x = self.linear_speed
+                    twist.angular.z = self.angular_speed * angle_diff * 2.0
             
             self.get_logger().info(
                 f'Nav: wp {self.path_index}/{len(self.current_path)}, '
