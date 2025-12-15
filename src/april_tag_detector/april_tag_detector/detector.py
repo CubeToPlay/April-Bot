@@ -14,7 +14,7 @@ class AprilTagDetector(Node):
     def __init__(self):
         super().__init__('detector')
         
-        self.declare_parameter('tag_size', 1.0) # meters
+        self.declare_parameter('tag_size', 0.5) # meters
         self.declare_parameter('camera_topic', '/camera/image_raw')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
         self.declare_parameter('publish_tf', True)
@@ -305,7 +305,7 @@ class AprilTagDetector(Node):
             approx = cv2.approxPolyDP(cnt, 0.015 * peri, True)
             area = cv2.contourArea(cnt)
             
-            if area < 1500:
+            if area < 300:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
