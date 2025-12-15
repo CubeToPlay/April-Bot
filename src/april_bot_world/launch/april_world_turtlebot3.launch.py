@@ -17,8 +17,8 @@ def generate_launch_description():
     turtlebot3_spawn_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'spawn_turtlebot3.launch.py']) #path to launch file for spawning turtlebot3
     turtlebot3_state_publisher_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'robot_state_publisher.launch.py']) #path to turtlebot3 state publisher launch file
 
-    x_pose = LaunchConfiguration('x_pose', default='-2.0') #set the x position of turtlebot
-    y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
+    x_pose = LaunchConfiguration('x_pose', default='0.45') #set the x position of turtlebot
+    y_pose = LaunchConfiguration('y_pose', default='1.85') #set the y position of turtlebot    
 
     return LaunchDescription([
         SetEnvironmentVariable(

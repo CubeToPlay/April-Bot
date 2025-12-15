@@ -26,7 +26,7 @@ setup(
         ('share/' + package_name + '/models', 
             ['models/SmallWalls.dae']),
         ('share/' + package_name + '/models', 
-            ['models/worldwalls.dae']),
+            ['models/BigWalls.dae']),
 
     ],
     install_requires=['setuptools'],
