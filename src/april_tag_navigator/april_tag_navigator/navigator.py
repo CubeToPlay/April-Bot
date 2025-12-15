@@ -852,7 +852,7 @@ class AprilTagNavigator(Node):
             throttle_duration_sec=2.0
         )
         
-        return candidates[]
+        return candidates
     
     def publish_path(self, path):
         """Publish path for visualization
