@@ -11,6 +11,7 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('april_bot_world')
     pkg_path = FindPackageShare('april_bot_world') #current package
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
+    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
     return LaunchDescription([
         SetEnvironmentVariable(
             name='GZ_SIM_RESOURCE_PATH',
@@ -39,7 +40,16 @@ def generate_launch_description():
             output='screen',
             shell=False
         ),
-        
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher',
+            output='screen',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'robot_description': open("/turtlebot3_waffle_gz/model.sdf").read()
+            }]
+        ),
         # Static transform: base_footprint -> base_scan
         Node(
             package='tf2_ros',
