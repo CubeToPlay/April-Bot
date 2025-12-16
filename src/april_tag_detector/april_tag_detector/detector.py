@@ -254,9 +254,6 @@ class AprilTagDetector(Node):
         threshold = 36 - self.max_hamming
                 
         if best_score >= threshold:
-            # Show visualization - now should show clean black/white cells
-            cv2.imshow(f"Tag {best_id}", self.draw_grid(warped, grid=8))
-            cv2.waitKey(1)
             return best_id
         
         return None
