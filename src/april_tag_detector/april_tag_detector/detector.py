@@ -147,6 +147,8 @@ class AprilTagDetector(Node):
                     
                     self.tags[tag_id] = image
                     self.get_logger().info(f'Loaded tag ID {tag_id}')
+                    cv2.imshow(f"{tag_id} - template", self.draw_grid(image))
+                    cv2.waitKey(1)
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     
@@ -176,7 +178,7 @@ class AprilTagDetector(Node):
         
         return bits_6x6.flatten()
     
-    def draw_grid(self, img, grid=6):
+    def draw_grid(self, img, grid=8):
         """Draw grid overlay - default to 8x8 to show full structure"""
         h, w = img.shape[:2]
         step = h // grid
@@ -366,10 +368,7 @@ class AprilTagDetector(Node):
         black_cells = sum(1 for val in inner_cells if val < 128)
         white_cells = len(inner_cells) - black_cells
         std_dev = np.std(inner_cells)
-        
-        # DEBUG
-        self.get_logger().info(f"Inner pattern: {black_cells} black, {white_cells} white, std={std_dev:.1f}")
-        
+                
         has_variation = (black_cells >= 1 and white_cells >= 1)
         has_contrast = std_dev > 30
         
@@ -457,6 +456,8 @@ class AprilTagDetector(Node):
             
             # Now decode
             tag_id = self.decode_quad(warped_thresh)
+            cv2.imshow("Failed to decode", warped_thresh)
+            cv2.waitKey(1)
             
             if tag_id is None:
                 cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 0), 2)  # Orange = decode failed
