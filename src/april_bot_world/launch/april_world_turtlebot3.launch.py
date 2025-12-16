@@ -51,6 +51,17 @@ def generate_launch_description():
                       '--frame-id', 'base_footprint', '--child-frame-id', 'base_scan'],
             parameters=[{'use_sim_time': True}]
         ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='camera_rgb_optical_tf',
+            arguments=[
+                '0', '0', '0',          # translation
+                '-1.5708', '0', '-1.5708',  # roll pitch yaw
+                'camera_rgb_frame',    # parent
+                'camera_rgb_optical_frame'  # child
+            ]
+        ),
         
         # Static transform: base_footprint -> camera_rgb_frame
         Node(
