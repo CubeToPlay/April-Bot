@@ -1287,61 +1287,139 @@ class AprilTagNavigator(Node):
         
         elif self.state == NavigationState.TRACKING:
             # If the tag is no longer visible, replan the path to the tag
-            if not self.target_tag_visible:
-                self.state = NavigationState.PLANNING
-                self.get_logger().warning('Lost tag, replanning')
-                self.cmd_vel_pub.publish(twist)
-                return
-            
-            # If the robot has reached the april tag
-            if self.target_tag_distance <= self.approach_distance:
+
+            tag = self.discovered_tags[self.target_tag_id]
+                
+            # Vector from robot → tag
+            dx = tag['x'] - self.robot_pose['x']
+            dy = tag['y'] - self.robot_pose['y']
+            dist = math.hypot(dx, dy)
+
+            if dist > 0.001:
+                ux, uy = dx / dist, dy / dist
+            else:
+                ux, uy = 0.0, 0.0
+
+            # Stand-off goal in front of tag
+            goal_x = tag['x'] - ux * self.approach_distance
+            goal_y = tag['y'] - uy * self.approach_distance
+
+            if not self.current_path and self.target_tag_distance > self.approach_distance:
+                self.current_path = self.astar_planning(
+                    self.robot_pose['x'], self.robot_pose['y'],
+                    goal_x, goal_y
+                )
+
+                if self.current_path:
+                    self.path_index = 0
+                    self.state = NavigationState.NAVIGATING
+                    self.publish_path(self.current_path)
+                    self.get_logger().info(f'Path planned to tag: {len(self.current_path)} waypoints')
+            nav_info = self.follow_path()
+            if nav_info is None:
                 self.state = NavigationState.REACHED
                 self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
-            else:
-                # Angle control
-                angle_error_rad = -math.radians(self.target_tag_angle)
-                ANGLE_DEAD_ZONE = math.radians(10.0)  # 10 degrees
-
-                if abs(angle_error_rad) < ANGLE_DEAD_ZONE:
-                    # Centered - drive straight toward tag
-                    twist.angular.z = 0.0
-                    twist.linear.x = self.linear_speed * 0.7
-                    
-                elif abs(angle_error_rad) > math.radians(25):
-                    # Large angle error (>25°) - ROTATE IN PLACE
-                    # Don't move forward when tag is far off to the side
-                    twist.linear.x = 0.0
-                    ANGULAR_GAIN = 1.0
-                    twist.angular.z = -angle_error_rad * ANGULAR_GAIN
-                    # Clamp
-                    max_angular = self.angular_speed * 0.8
-                    twist.angular.z = max(-max_angular, min(max_angular, twist.angular.z))
-                    
-                else:
-                    # Medium angle error (3° to 25°) - proportional control
-                    ANGULAR_GAIN = 1.5
-                    angular_vel = -angle_error_rad * ANGULAR_GAIN
-                    
-                    # Clamp angular velocity
-                    max_angular = self.angular_speed * 0.6
-                    angular_vel = max(-max_angular, min(max_angular, angular_vel))
-                    
-                    # Reduce forward speed proportionally
-                    # At 25°, speed = 0; at 3°, speed = full
-                    angle_factor = (math.radians(25) - abs(angle_error_rad)) / (math.radians(25) - ANGLE_DEAD_ZONE)
-                    angle_factor = max(0.0, min(1.0, angle_factor))  # Clamp to [0, 1]
-                    
-                    twist.linear.x = self.linear_speed * 0.5 * angle_factor
-                    twist.angular.z = angular_vel
-                
-                self.get_logger().info(
-                    f'Tracking: dist={self.target_tag_distance:.2f}m, '
-                    f'angle={self.target_tag_angle:.1f}°, '
-                    f'cmd_vel=({twist.linear.x:.2f}, {twist.angular.z:.2f})',
-                    throttle_duration_sec=0.5
+            
+            distance, angle_diff = nav_info
+            
+            if critical:
+                # Emergency stop
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.get_logger().warning(
+                    f'EMERGENCY STOP! Obstacle at {min_distance:.2f}m',
+                    throttle_duration_sec=1.0
                 )
+                self.current_path = []
+                self.path_index = 0
+                self.frontier_target = None 
+            elif warning:
+                # Slow down near obstacles
+                speed_factor = (min_distance - self.critical_distance) / \
+                                (self.min_wall_distance - self.critical_distance)
+                speed_factor = max(0.2, min(1.0, speed_factor))
+                
+                if abs(angle_diff) > 0.5:
+                    twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                    twist.linear.x = 0.0 
+                else:
+                    twist.linear.x = self.linear_speed * speed_factor
+                    twist.angular.z = self.angular_speed * angle_diff * 2.0
+            else:
+                # Normal navigation
+                if abs(angle_diff) > 0.5:
+                    twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                    twist.linear.x = 0.0 
+                elif abs(angle_diff) > 0.2:
+                    twist.angular.z = self.angular_speed * (angle_diff / abs(angle_diff))
+                    twist.linear.x = self.linear_speed * 0.5
+                else:
+                    twist.linear.x = self.linear_speed
+                    twist.angular.z = self.angular_speed * angle_diff * 2.0
+            
+            self.get_logger().info(
+                f'Nav: wp {self.path_index}/{len(self.current_path)}, '
+                f'dist={distance:.2f}m, angle={math.degrees(angle_diff):.1f}°',
+                throttle_duration_sec=1.0
+            )
+
+            # if not self.target_tag_visible:
+            #     self.state = NavigationState.PLANNING
+            #     self.get_logger().warning('Lost tag, replanning')
+            #     self.cmd_vel_pub.publish(twist)
+            #     return
+            
+            # # If the robot has reached the april tag
+            # if self.target_tag_distance <= self.approach_distance:
+            #     self.state = NavigationState.REACHED
+            #     self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
+            #     twist.linear.x = 0.0
+            #     twist.angular.z = 0.0
+            # else:
+            #     # Angle control
+            #     angle_error_rad = -math.radians(self.target_tag_angle)
+            #     ANGLE_DEAD_ZONE = math.radians(10.0)  # 10 degrees
+
+            #     if abs(angle_error_rad) < ANGLE_DEAD_ZONE:
+            #         # Centered - drive straight toward tag
+            #         twist.angular.z = 0.0
+            #         twist.linear.x = self.linear_speed * 0.7
+                    
+            #     elif abs(angle_error_rad) > math.radians(25):
+            #         # Large angle error (>25°) - ROTATE IN PLACE
+            #         # Don't move forward when tag is far off to the side
+            #         twist.linear.x = 0.0
+            #         ANGULAR_GAIN = 1.0
+            #         twist.angular.z = -angle_error_rad * ANGULAR_GAIN
+            #         # Clamp
+            #         max_angular = self.angular_speed * 0.8
+            #         twist.angular.z = max(-max_angular, min(max_angular, twist.angular.z))
+                    
+            #     else:
+            #         # Medium angle error (3° to 25°) - proportional control
+            #         ANGULAR_GAIN = 1.5
+            #         angular_vel = -angle_error_rad * ANGULAR_GAIN
+                    
+            #         # Clamp angular velocity
+            #         max_angular = self.angular_speed * 0.6
+            #         angular_vel = max(-max_angular, min(max_angular, angular_vel))
+                    
+            #         # Reduce forward speed proportionally
+            #         # At 25°, speed = 0; at 3°, speed = full
+            #         angle_factor = (math.radians(25) - abs(angle_error_rad)) / (math.radians(25) - ANGLE_DEAD_ZONE)
+            #         angle_factor = max(0.0, min(1.0, angle_factor))  # Clamp to [0, 1]
+                    
+            #         twist.linear.x = self.linear_speed * 0.5 * angle_factor
+            #         twist.angular.z = angular_vel
+                
+            #     self.get_logger().info(
+            #         f'Tracking: dist={self.target_tag_distance:.2f}m, '
+            #         f'angle={self.target_tag_angle:.1f}°, '
+            #         f'cmd_vel=({twist.linear.x:.2f}, {twist.angular.z:.2f})',
+            #         throttle_duration_sec=0.5
+            #     )
         # If the robot has reached the tag, the robot should become idle and wait for new commands
         elif self.state == NavigationState.REACHED:
             twist.linear.x = 0.0
