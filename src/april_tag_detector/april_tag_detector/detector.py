@@ -435,6 +435,7 @@ class AprilTagDetector(Node):
                 cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 255), 2)  # Magenta = no border
                 continue
             
+            
             # if not self.validate_inner_pattern(warped_thresh):
             #     cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
             #     continue
