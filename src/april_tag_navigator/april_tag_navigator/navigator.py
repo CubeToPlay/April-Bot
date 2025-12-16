@@ -1312,7 +1312,6 @@ class AprilTagNavigator(Node):
 
                 if self.current_path:
                     self.path_index = 0
-                    self.state = NavigationState.NAVIGATING
                     self.publish_path(self.current_path)
                     self.get_logger().info(f'Path planned to tag: {len(self.current_path)} waypoints')
             nav_info = self.follow_path()
