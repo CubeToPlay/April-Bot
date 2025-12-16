@@ -1109,8 +1109,8 @@ class AprilTagNavigator(Node):
                     ux, uy = 0.0, 0.0
 
                 # Stand-off goal in front of tag
-                goal_x = tag['x'] #- ux * self.approach_distance
-                goal_y = tag['y'] #- uy * self.approach_distance
+                goal_x = tag['x'] - ux * self.approach_distance
+                goal_y = tag['y'] - uy * self.approach_distance
                 
                 # Check if goal is in map bounds
                 goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
@@ -1301,10 +1301,10 @@ class AprilTagNavigator(Node):
                 ux, uy = 0.0, 0.0
 
             # Stand-off goal in front of tag
-            goal_x = tag['x'] #- ux * self.approach_distance
-            goal_y = tag['y'] #- uy * self.approach_distance
+            goal_x = tag['x'] - ux * self.approach_distance
+            goal_y = tag['y'] - uy * self.approach_distance
 
-            if not self.current_path and self.target_tag_distance > self.approach_distance:
+            if not self.current_path or self.target_tag_distance > self.approach_distance:
                 self.current_path = self.astar_planning(
                     self.robot_pose['x'], self.robot_pose['y'],
                     goal_x, goal_y
