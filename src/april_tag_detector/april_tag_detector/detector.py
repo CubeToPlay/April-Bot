@@ -167,8 +167,6 @@ class AprilTagDetector(Node):
                     
                     self.tags[tag_id] = image
                     self.get_logger().info(f'Loaded tag ID {tag_id}')
-                    cv2.imshow(f"{tag_id} - template", self.draw_grid(image))
-                    cv2.waitKey(1)
         
         self.get_logger().info(f'Loaded {len(self.tags)} tag images')
     
