@@ -1140,7 +1140,7 @@ class AprilTagNavigator(Node):
             else:
                 # Calculate angular velocity to center the tag
                 # target_tag_angle is in degrees, positive = tag is to the right
-                angle_error_rad = math.radians(self.target_tag_angle)
+                angle_error_rad = -math.radians(self.target_tag_angle)
                 ANGLE_DEAD_ZONE = math.radians(3.0)
 
                 if abs(angle_error_rad) < ANGLE_DEAD_ZONE:
