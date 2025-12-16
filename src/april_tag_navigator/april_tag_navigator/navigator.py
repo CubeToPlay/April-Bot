@@ -851,19 +851,17 @@ class AprilTagNavigator(Node):
         """Publish path for visualization
         RViz displays the path that is published
         """
-        if not path:
-            return
         
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.header.stamp = self.get_clock().now().to_msg()
-        
-        for x, y in path:
-            pose = PoseStamped()
-            pose.header = path_msg.header
-            pose.pose.position.x = x
-            pose.pose.position.y = y
-            path_msg.poses.append(pose)
+        if path:
+            for x, y in path:
+                pose = PoseStamped()
+                pose.header = path_msg.header
+                pose.pose.position.x = x
+                pose.pose.position.y = y
+                path_msg.poses.append(pose)
         
         self.path_pub.publish(path_msg)
 
@@ -873,6 +871,8 @@ class AprilTagNavigator(Node):
             return None
         
         # Gets the current waypoint the robot has to go to in order to continue on the planned path
+        self.current_path = self.current_path[max(0, self.path_index - 1):]
+        self.publish_path(self.current_path)
         waypoint = self.current_path[self.path_index]
         
         # Compute the distance between the robot and the waypoint
@@ -1223,7 +1223,9 @@ class AprilTagNavigator(Node):
         elif self.state == NavigationState.NAVIGATING:
             # If the target tag is visible, then the robot should start TRACKING the tag and move directly to it.
             if self.target_tag_visible:
-                self.state = NavigationState.TRACKING
+                self.state = NavigationState.PLANNING
+                self.current_path = []
+                self.path_index = 0
                 self.get_logger().info('Switching to visual tracking')
                 self.cmd_vel_pub.publish(twist)
                 return
@@ -1302,7 +1304,7 @@ class AprilTagNavigator(Node):
             else:
                 # Angle control
                 angle_error_rad = -math.radians(self.target_tag_angle)
-                ANGLE_DEAD_ZONE = math.radians(3.0)  # 3 degrees
+                ANGLE_DEAD_ZONE = math.radians(10.0)  # 10 degrees
 
                 if abs(angle_error_rad) < ANGLE_DEAD_ZONE:
                     # Centered - drive straight toward tag
