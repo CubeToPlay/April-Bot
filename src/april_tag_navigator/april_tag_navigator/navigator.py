@@ -1092,7 +1092,7 @@ class AprilTagNavigator(Node):
             twist.angular.z = 0.0
         
         elif self.state == NavigationState.PLANNING:
-             if self.robot_pose is None:
+            if self.robot_pose is None:
                 self.get_logger().info(f"Robot pose is NONE")
                 return
             
