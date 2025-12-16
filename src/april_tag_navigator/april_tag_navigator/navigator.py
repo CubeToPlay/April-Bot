@@ -1320,6 +1320,8 @@ class AprilTagNavigator(Node):
                 self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
+                self.cmd_vel_pub.publish(twist)
+                return
             
             distance, angle_diff = nav_info
             
