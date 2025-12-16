@@ -1221,7 +1221,7 @@ class AprilTagNavigator(Node):
         elif self.state == NavigationState.NAVIGATING:
             # If the target tag is visible, then the robot should start TRACKING the tag and move directly to it.
             if self.target_tag_visible:
-                self.state = NavigationState.PLANNING
+                self.state = NavigationState.TRACKING
                 self.current_path = []
                 self.path_index = 0
                 self.get_logger().info('Switching to visual tracking')
