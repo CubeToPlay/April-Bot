@@ -422,14 +422,12 @@ class AprilTagDetector(Node):
                 continue
 
             if len(approx) != 4 or not cv2.isContourConvex(approx):
-                cv2.polylines(debug_image, [approx.astype(int)], True, (128, 128, 128), 1)
                 continue
                 
             # Must have child contours (patterns) inside
             has_child = hierarchy[i][2] != -1
         
             if not has_child:
-                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 2)
                 continue
 
             quad = self.order_points(approx.reshape(4, 2))
@@ -459,19 +457,16 @@ class AprilTagDetector(Node):
             
             # Validate border and inner pattern
             if not self.validate_border(warped_thresh):
-                cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 255), 2)  # Magenta = no border
                 continue
             
 
             if not self.validate_inner_pattern(warped_thresh):
-                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
                 continue
             
             # Now decode
             tag_id = self.decode_quad(warped_thresh)
             
             if tag_id is None:
-                cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 0), 2)  # Orange = decode failed
                 continue
 
             detected_tags.append({
@@ -482,6 +477,21 @@ class AprilTagDetector(Node):
             
             # Green = success
             cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 0), 3)
+            label = f"ID {tag_id}"
+            center = quad.mean(axis=0)
+            cx, cy = center.astype(int)
+            text_pos = (cx - 20, cy - 10)
+            cv2.putText(
+                debug_image,
+                label,
+                text_pos,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,              # font scale
+                (0, 255, 0),      # green
+                2,                # thickness
+                cv2.LINE_AA
+            )
+
 
         return detected_tags, debug_image
 
@@ -519,7 +529,6 @@ class AprilTagDetector(Node):
                 detection.hamming = int(0)
                 detection.decision_margin = float(0.8)
                 detections_array.detections.append(detection)
-                cv2.polylines(vis_image, [corners.astype(int)], True, (0,255,0), 2)
 
         if len(detections_array.detections) > 0:
             self.detections_array_pub.publish(detections_array)
