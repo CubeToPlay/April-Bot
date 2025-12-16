@@ -1293,36 +1293,48 @@ class AprilTagNavigator(Node):
                 self.cmd_vel_pub.publish(twist)
                 return
             
-            # If the robot has reached the april tag, change the state to REACHED and publish that the tag was reached
+            # If the robot has reached the april tag
             if self.target_tag_distance <= self.approach_distance:
                 self.state = NavigationState.REACHED
                 self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
-            # If the robot has not been reached and is still visible, move toward the tag
             else:
-                # Calculate angular velocity to center the tag
-                # target_tag_angle is in degrees, positive = tag is to the right
+                # Angle control
                 angle_error_rad = -math.radians(self.target_tag_angle)
-                ANGLE_DEAD_ZONE = math.radians(3.0)
+                ANGLE_DEAD_ZONE = math.radians(3.0)  # 3 degrees
 
                 if abs(angle_error_rad) < ANGLE_DEAD_ZONE:
                     # Centered - drive straight toward tag
-                    angular_vel = 0.0
+                    twist.angular.z = 0.0
                     twist.linear.x = self.linear_speed * 0.7
+                    
+                elif abs(angle_error_rad) > math.radians(25):
+                    # Large angle error (>25°) - ROTATE IN PLACE
+                    # Don't move forward when tag is far off to the side
+                    twist.linear.x = 0.0
+                    ANGULAR_GAIN = 1.0
+                    twist.angular.z = -angle_error_rad * ANGULAR_GAIN
+                    # Clamp
+                    max_angular = self.angular_speed * 0.8
+                    twist.angular.z = max(-max_angular, min(max_angular, twist.angular.z))
+                    
                 else:
-                    ANGULAR_GAIN = 1.5  # Reduced from 2.0
+                    # Medium angle error (3° to 25°) - proportional control
+                    ANGULAR_GAIN = 1.5
                     angular_vel = -angle_error_rad * ANGULAR_GAIN
                     
                     # Clamp angular velocity
-                    max_angular = self.angular_speed * 0.6  # Use 60% of max for smoother control
+                    max_angular = self.angular_speed * 0.6
                     angular_vel = max(-max_angular, min(max_angular, angular_vel))
                     
-                    # Reduce forward speed when turning
-                    speed_reduction = 1.0 - (abs(angle_error_rad) / math.radians(20))
-                    twist.linear.x = self.linear_speed * 0.5 * speed_reduction
-                
-                twist.angular.z = angular_vel
+                    # Reduce forward speed proportionally
+                    # At 25°, speed = 0; at 3°, speed = full
+                    angle_factor = (math.radians(25) - abs(angle_error_rad)) / (math.radians(25) - ANGLE_DEAD_ZONE)
+                    angle_factor = max(0.0, min(1.0, angle_factor))  # Clamp to [0, 1]
+                    
+                    twist.linear.x = self.linear_speed * 0.5 * angle_factor
+                    twist.angular.z = angular_vel
                 
                 self.get_logger().info(
                     f'Tracking: dist={self.target_tag_distance:.2f}m, '
