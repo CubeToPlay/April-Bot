@@ -1350,6 +1350,8 @@ class AprilTagNavigator(Node):
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
+                self.target_tag_visible = False
+                self.target_tag_id = 11
                 return
             
             distance, angle_diff = nav_info
