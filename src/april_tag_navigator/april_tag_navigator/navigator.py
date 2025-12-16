@@ -1333,7 +1333,7 @@ class AprilTagNavigator(Node):
             goal_x = tag['x'] - ux * self.approach_distance
             goal_y = tag['y'] - uy * self.approach_distance
 
-            if not self.current_path or dist > self.approach_distance:
+            if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
                     self.robot_pose['x'], self.robot_pose['y'],
                     goal_x, goal_y
