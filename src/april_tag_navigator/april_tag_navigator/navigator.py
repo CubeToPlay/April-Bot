@@ -38,7 +38,7 @@ class AprilTagNavigator(Node):
         super().__init__('navigator')
 
         # Parameters
-        self.declare_parameter('approach_distance', 0.5)
+        self.declare_parameter('approach_distance', 0.3)
         self.declare_parameter('linear_speed', 0.5)
         self.declare_parameter('angular_speed', 0.8)
         self.declare_parameter('waypoint_tolerance', 0.3)
@@ -1426,7 +1426,9 @@ class AprilTagNavigator(Node):
             twist.linear.x = 0.0
             twist.angular.z = 0.0
             self.state = NavigationState.IDLE
-            self.reach_goal_pub.publish(True)
+            msg = Bool()
+            msg.data = True
+            self.reach_goal_pub.publish(msg)
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
         
         # Publish the velocity of the robot
