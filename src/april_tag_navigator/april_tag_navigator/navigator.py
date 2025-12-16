@@ -891,7 +891,7 @@ class AprilTagNavigator(Node):
             return None
         
         # Gets the current waypoint the robot has to go to in order to continue on the planned path
-        self.publish_path(self.current_path[self.path_index:])
+        self.publish_path(self.current_path[max(0, self.path_index - 1):])
         waypoint = self.current_path[self.path_index]
         
         # Compute the distance between the robot and the waypoint
