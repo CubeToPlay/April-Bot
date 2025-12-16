@@ -16,7 +16,7 @@ def generate_launch_description():
     # AprilTag Detector Parameters
     tag_size_arg = DeclareLaunchArgument(
         'tag_size',
-        default_value='0.45',
+        default_value='0.4',
         description='Physical size of AprilTags in meters'
     )
     
