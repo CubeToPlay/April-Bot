@@ -1104,6 +1104,14 @@ class AprilTagNavigator(Node):
         
         # Check for obstacles
         critical, warning, min_distance = self.check_obstacle_ahead()
+        if self.target_tag_visible:
+            if self.state != NavigationState.TRACKING:
+                self.get_logger().info("Tag visible — skipping planning, entering TRACKING")
+            self.state = NavigationState.TRACKING
+            self.current_path = []
+            self.path_index = 0
+            self.cmd_vel_pub.publish(twist)
+            return
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
@@ -1113,14 +1121,6 @@ class AprilTagNavigator(Node):
         elif self.state == NavigationState.PLANNING:
             if self.robot_pose is None:
                 self.get_logger().info(f"Robot pose is NONE")
-                return
-            
-            if self.target_tag_visible:
-                self.state = NavigationState.TRACKING
-                self.current_path = []
-                self.path_index = 0
-                self.get_logger().info('Switching to visual tracking')
-                self.cmd_vel_pub.publish(twist)
                 return
             
             # ========== KNOWN TAG ==========
