@@ -335,32 +335,45 @@ class AprilTagDetector(Node):
     def validate_inner_pattern(self, warped, grid=8):
         """
         Validate that inner 6x6 region has a pattern (not all black or all white).
+        More lenient to handle perspective distortion.
         """
         h, w = warped.shape
         cell_size = h // grid
-        margin = 3
+        margin = 5
         
-        # Extract inner 6x6 data region (skip outer border)
         inner_cells = []
-        for y in range(1, 7):  # Skip row 0 and row 7
-            for x in range(1, 7):  # Skip col 0 and col 7
-                cell = warped[y*cell_size+margin:(y+1)*cell_size-margin,
-                            x*cell_size+margin:(x+1)*cell_size-margin]
-                if cell.size > 0:
+        for y in range(1, 7):
+            for x in range(1, 7):
+                y_start = y * cell_size + margin
+                y_end = (y + 1) * cell_size - margin
+                x_start = x * cell_size + margin
+                x_end = (x + 1) * cell_size - margin
+                
+                y_start = max(0, y_start)
+                y_end = min(h, y_end)
+                x_start = max(0, x_start)
+                x_end = min(w, x_end)
+                
+                cell = warped[y_start:y_end, x_start:x_end]
+                
+                if cell.size > 10:
                     inner_cells.append(np.median(cell))
         
-        if not inner_cells:
+        if len(inner_cells) < 30:
+            self.get_logger().debug(f"Not enough inner cells: {len(inner_cells)}")
             return False
         
-        # Check for variation in inner pattern
         black_cells = sum(1 for val in inner_cells if val < 128)
         white_cells = len(inner_cells) - black_cells
+        std_dev = np.std(inner_cells)
         
-        # Must have BOTH black and white cells (not all same color)
-        # AprilTags typically have 2-32 black cells out of 36
-        has_variation = (2 <= black_cells <= 34)
+        # DEBUG
+        self.get_logger().info(f"Inner pattern: {black_cells} black, {white_cells} white, std={std_dev:.1f}")
         
-        return has_variation
+        has_variation = (black_cells >= 1 and white_cells >= 1)
+        has_contrast = std_dev > 30
+        
+        return has_variation and has_contrast
 
 
     def find_apriltags_contours(self, image, warp_size=240):
@@ -435,10 +448,10 @@ class AprilTagDetector(Node):
                 cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 255), 2)  # Magenta = no border
                 continue
             
-            
-            # if not self.validate_inner_pattern(warped_thresh):
-            #     cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
-            #     continue
+
+            if not self.validate_inner_pattern(warped_thresh):
+                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
+                continue
             
             # Now decode
             tag_id = self.decode_quad(warped_thresh)
