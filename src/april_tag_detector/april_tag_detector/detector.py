@@ -139,6 +139,26 @@ class AprilTagDetector(Node):
                 image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
                 
                 if image is not None:
+                    # Find the actual tag by detecting the black border
+                    _, binary = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY_INV)
+                    
+                    # Find contours to locate the tag
+                    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    if contours:
+                        # Get bounding box of largest contour (the tag)
+                        largest_contour = max(contours, key=cv2.contourArea)
+                        x, y, w, h = cv2.boundingRect(largest_contour)
+                        
+                        # Crop to just the tag with small margin
+                        margin = 2
+                        x = max(0, x - margin)
+                        y = max(0, y - margin)
+                        w = min(image.shape[1] - x, w + 2 * margin)
+                        h = min(image.shape[0] - y, h + 2 * margin)
+                        
+                        image = image[y:y+h, x:x+w]
+                    
                     # Resize to standard size
                     image = cv2.resize(image, (240, 240), interpolation=cv2.INTER_AREA)
                     
