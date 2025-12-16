@@ -1094,6 +1094,14 @@ class AprilTagNavigator(Node):
                 self.get_logger().info(f"Robot pose is NONE")
                 return
             
+            if self.target_tag_visible:
+                self.state = NavigationState.TRACKING
+                self.current_path = []
+                self.path_index = 0
+                self.get_logger().info('Switching to visual tracking')
+                self.cmd_vel_pub.publish(twist)
+                return
+            
             # ========== KNOWN TAG ==========
             if self.target_tag_id in self.discovered_tags:
                 tag = self.discovered_tags[self.target_tag_id]
@@ -1304,7 +1312,7 @@ class AprilTagNavigator(Node):
             goal_x = tag['x'] - ux * self.approach_distance
             goal_y = tag['y'] - uy * self.approach_distance
 
-            if not self.current_path or self.target_tag_distance > self.approach_distance:
+            if not self.current_path or dist > self.approach_distance:
                 self.current_path = self.astar_planning(
                     self.robot_pose['x'], self.robot_pose['y'],
                     goal_x, goal_y
