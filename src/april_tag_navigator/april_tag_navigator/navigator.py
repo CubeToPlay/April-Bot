@@ -638,7 +638,7 @@ class AprilTagNavigator(Node):
                 
                 # Treat unknown as free if allowed
                 if allow_unknown and cell_value == -1:
-                    return True
+                    continue
                 
                 if cell_value >= 50:  # obstacle
                     return False
@@ -790,7 +790,7 @@ class AprilTagNavigator(Node):
         )
 
         candidates = []
-        MAX_RADIUS = int(10.0 / self.map_resolution)  # 5 meters
+        MAX_RADIUS = int(10.0 / self.map_resolution)
 
         for dy in range(-MAX_RADIUS, MAX_RADIUS):
             for dx in range(-MAX_RADIUS, MAX_RADIUS):
@@ -800,30 +800,25 @@ class AprilTagNavigator(Node):
                 if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
                     continue
 
-                # Accept free or low-confidence cells (gray areas in RViz)
-                # 0-49: Free or uncertain but probably free
-                # 50-100: Obstacle
-                # -1: Unknown
-                if self.map_data[my, mx] >= 50:  # Skip obstacles
+                if self.map_data[my, mx] >= 50:
                     continue
                 
-                if self.map_data[my, mx] == -1:  # Skip unknown (we want cells NEXT to unknown)
+                if self.map_data[my, mx] == -1:
                     continue
 
                 # Check if this cell is adjacent to unknown space
                 has_unknown_neighbor = False
                 for nx, ny in [(mx+1,my), (mx-1,my), (mx,my+1), (mx,my-1)]:
                     if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
-                        if self.map_data[ny, nx] == -1:  # Found unknown neighbor
+                        if self.map_data[ny, nx] == -1:
                             has_unknown_neighbor = True
                             break
                 
                 if not has_unknown_neighbor:
                     continue
 
-                # Distance to robot
                 dist = math.hypot(mx - robot_mx, my - robot_my)
-                if dist * self.map_resolution < 0.6:  # minimum 60 cm
+                if dist * self.map_resolution < 0.6:
                     continue
                 
                 wx, wy = self.map_to_world(mx, my)
@@ -835,28 +830,38 @@ class AprilTagNavigator(Node):
                 throttle_duration_sec=2.0
             )
             return None
+
+        # Cluster frontiers
         clusters = {}
         for dist, x, y in candidates:
-            key = (round(x, 1), round(y, 1))
+            key = (round(x / 0.5) * 0.5, round(y / 0.5) * 0.5)  # 0.5m grid clustering
             clusters.setdefault(key, []).append((dist, x, y))
 
-        # Choose centroid of largest cluster
-        best_cluster = max(clusters.values(), key=len)
-        avg_x = sum(p[1] for p in best_cluster) / len(best_cluster)
-        avg_y = sum(p[2] for p in best_cluster) / len(best_cluster)
-
-        return [(0, avg_x, avg_y)]
-
-        # Sort by distance and pick closest
-        # candidates.sort()
+        # Get top 5 clusters by size
+        sorted_clusters = sorted(clusters.values(), key=len, reverse=True)[:5]
         
-        # self.get_logger().info(
-        #     f"Found {len(candidates)} frontier candidates, "
-        #     f"closest at ({candidates[0][1]:.2f}, {candidates[0][2]:.2f})",
-        #     throttle_duration_sec=2.0
-        # )
+        result = []
+        for cluster in sorted_clusters:
+            # Get centroid of cluster
+            avg_x = sum(p[1] for p in cluster) / len(cluster)
+            avg_y = sum(p[2] for p in cluster) / len(cluster)
+            # Distance from robot to centroid
+            dist_to_centroid = math.hypot(
+                avg_x - self.robot_pose['x'],
+                avg_y - self.robot_pose['y']
+            )
+            result.append((dist_to_centroid, avg_x, avg_y))
         
-        # return candidates
+        # Sort by distance
+        result.sort()
+        
+        self.get_logger().info(
+            f"Found {len(candidates)} frontier candidates in {len(result)} clusters, "
+            f"closest at ({result[0][1]:.2f}, {result[0][2]:.2f})",
+            throttle_duration_sec=2.0
+        )
+        
+        return result
     
     def publish_path(self, path):
         """Publish path for visualization
