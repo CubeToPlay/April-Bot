@@ -1107,11 +1107,11 @@ class AprilTagNavigator(Node):
         if self.target_tag_visible:
             if self.state != NavigationState.TRACKING:
                 self.get_logger().info("Tag visible — skipping planning, entering TRACKING")
-            self.state = NavigationState.TRACKING
-            self.current_path = []
-            self.path_index = 0
-            self.cmd_vel_pub.publish(twist)
-            return
+                self.state = NavigationState.TRACKING
+                self.current_path = []
+                self.path_index = 0
+                self.cmd_vel_pub.publish(twist)
+                return
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
