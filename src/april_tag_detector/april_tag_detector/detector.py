@@ -447,11 +447,11 @@ class AprilTagDetector(Node):
 
         # OpenCV → ROS translation
         tvec = tvec.flatten()
-        position = np.array([
-            tvec[2],
-        -tvec[0],
-        -tvec[1]
-        ])
+        x = tvec[2]   # forward
+        y = -tvec[0]  # left
+        z = -tvec[1]  # up
+
+        position = np.array([x, y, z])
 
         return {
             'position': position,
