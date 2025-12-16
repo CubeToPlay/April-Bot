@@ -66,15 +66,6 @@ class AprilTagNavigator(Node):
         self.min_wall_distance = self.get_parameter('min_wall_distance').value
         self.critical_distance = self.get_parameter('critical_distance').value
 
-        self.map_pause_active = False
-        self.map_pause_end_time = None
-        self.map_pause_duration = 1.5  # Increased from 0.8 to 1.5 seconds
-        self.last_map_size = (0, 0)  # Track map dimensions
-        self.last_map_info = None
-
-        self.last_pose_time = self.get_clock().now()
-
-
         # TF2 for SLAM localization
         try:
             use_sim = self.get_parameter('use_sim_time').value
@@ -125,17 +116,6 @@ class AprilTagNavigator(Node):
         """Publishes boolean if the robot has reached the given goal"""
         self.marker_pub = self.create_publisher(MarkerArray, '/apriltag_markers', 10)
 
-        # Client
-        self.serialize_client = self.create_client(
-            SerializePoseGraph,
-            '/slam_toolbox/serialize_map'
-        )
-        self.map_autosave_period = 60.0
-
-        self.map_autosave_timer = self.create_timer(
-            self.map_autosave_period,
-            self.autosave_map_callback
-        )
         # State
         self.state = NavigationState.IDLE
         """Robot's current state"""
@@ -196,24 +176,6 @@ class AprilTagNavigator(Node):
         
         # Load database
         self.load_tag_database()
-
-    def autosave_map_callback(self):
-        if not self.serialize_client.service_is_ready():
-            self.get_logger().warn('slam_toolbox serialize_map service not ready')
-            return
-
-        request = SerializePoseGraph.Request()
-        request.filename = 'map_autosave'
-
-        future = self.serialize_client.call_async(request)
-        future.add_done_callback(self.autosave_done_callback)
-
-    def autosave_done_callback(self, future):
-        try:
-            response = future.result()
-            self.get_logger().info('SLAM map autosaved (map_autosave.posegraph)')
-        except Exception as e:
-            self.get_logger().error(f'Autosave failed: {e}')
     
     def map_ready(self):
         if self.map_data is None:
@@ -550,7 +512,6 @@ class AprilTagNavigator(Node):
                 'y': transform.transform.translation.y,
                 'orientation': transform.transform.rotation
             }
-            self.last_pose_time = self.get_clock().now()
             
             # Only log if position actually changed
             if not hasattr(self, 'last_logged_pose') or \
@@ -567,29 +528,11 @@ class AprilTagNavigator(Node):
                 f'TF lookup failed: {str(ex)[:100]}',
                 throttle_duration_sec=2.0
             )
-    def pose_is_fresh(self, timeout_sec=0.5):
-        age = (self.get_clock().now() - self.last_pose_time).nanoseconds * 1e-9
-        return age < timeout_sec
     
     def map_callback(self, msg):
         """Store SLAM map
         The map metadata (width, height, resolution, etc.) is stored in order for coordinate conversions (between map and world)
         """
-        new_info = (
-            msg.info.width,
-            msg.info.height,
-            msg.info.resolution,
-            msg.info.origin.position.x,
-            msg.info.origin.position.y
-        )
-
-        if self.last_map_info is not None and new_info != self.last_map_info:
-            self.get_logger().warning(
-                "Map changed (resize/origin shift) — pausing navigation",
-                throttle_duration_sec=2.0
-            )
-
-        self.last_map_info = new_info
 
         # Store map normally
         self.map_data = np.array(msg.data).reshape(
@@ -1077,30 +1020,6 @@ class AprilTagNavigator(Node):
         twist = Twist()
         twist.linear.x = 0.0
         twist.angular.z = 0.0
-        # now = self.get_clock().now().nanoseconds / 1e9
-        # if self.map_pause_active:
-        #     if now < self.map_pause_end_time:
-        #         # Hold still and DO NOT EXECUTE ANY STATE LOGIC
-        #         self.cmd_vel_pub.publish(twist)
-        #         return  # Exit completely - no state processing
-        #     else:
-        #         # Pause ended - prepare for clean restart
-        #         self.map_pause_active = False
-        #         self.get_logger().info("Map stabilized, resuming navigation")
-                
-        #         # Force fresh pose and replan
-        #         self.update_robot_pose()
-        #         self.current_path = []
-        #         self.path_index = 0
-                
-        #         # Force replanning if we have a target
-        #         if self.target_tag_id is not None and self.state != NavigationState.IDLE:
-        #             self.state = NavigationState.PLANNING
-        #             self.get_logger().info("Forcing replan after map change")
-                
-        #         # Exit this loop iteration - let next iteration handle fresh planning
-        #         self.cmd_vel_pub.publish(twist)
-        #         return
         
         # Check for obstacles
         critical, warning, min_distance = self.check_obstacle_ahead()
@@ -1462,13 +1381,9 @@ class AprilTagNavigator(Node):
             self.reach_goal_pub.publish(msg)
             self.target_tag_visible = False
             self.target_tag_id = 11
+            self.current_path = []
+            self.publish_path(self.current_path)
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
-        
-        # Publish the velocity of the robot
-        if not self.pose_is_fresh():
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            self.get_logger().warn("Pose stale — stopping robot")
 
         self.cmd_vel_pub.publish(twist)
 
