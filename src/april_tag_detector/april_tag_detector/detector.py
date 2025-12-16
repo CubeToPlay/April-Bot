@@ -450,7 +450,7 @@ class AprilTagDetector(Node):
             
 
             if not self.validate_inner_pattern(warped_thresh):
-                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
+                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 165, 255), 2)  # Cyan = no pattern
                 continue
             
             # Now decode
