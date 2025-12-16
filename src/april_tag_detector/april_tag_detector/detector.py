@@ -282,6 +282,87 @@ class AprilTagDetector(Node):
         rect[3] = pts[np.argmax(diff)]
         return rect
 
+    def validate_border(self, warped, grid=8):
+        """
+        Validate that the warped image has a proper black border.
+        Returns True if border cells are predominantly black.
+        """
+        h, w = warped.shape
+        cell_size = h // grid
+        margin = 3  # Avoid edge artifacts
+        
+        border_cells = []
+        
+        # Sample all border cells (outer ring of 8x8 grid)
+        for i in range(grid):
+            # Top row
+            cell = warped[margin:cell_size-margin, 
+                        i*cell_size+margin:(i+1)*cell_size-margin]
+            border_cells.append(cell)
+            
+            # Bottom row
+            cell = warped[(grid-1)*cell_size+margin:grid*cell_size-margin,
+                        i*cell_size+margin:(i+1)*cell_size-margin]
+            border_cells.append(cell)
+            
+            # Left column (excluding corners already counted)
+            if i > 0 and i < grid-1:
+                cell = warped[i*cell_size+margin:(i+1)*cell_size-margin,
+                            margin:cell_size-margin]
+                border_cells.append(cell)
+            
+            # Right column (excluding corners already counted)
+            if i > 0 and i < grid-1:
+                cell = warped[i*cell_size+margin:(i+1)*cell_size-margin,
+                            (grid-1)*cell_size+margin:grid*cell_size-margin]
+                border_cells.append(cell)
+        
+        # Check that most border cells are BLACK (low pixel values)
+        black_count = 0
+        for cell in border_cells:
+            if cell.size == 0:
+                continue
+            mean_val = np.median(cell)
+            if mean_val < 128:  # Black
+                black_count += 1
+        
+        border_ratio = black_count / len(border_cells)
+        
+        # Require at least 90% of border cells to be black
+        return border_ratio >= 0.9
+
+
+    def validate_inner_pattern(self, warped, grid=8):
+        """
+        Validate that inner 6x6 region has a pattern (not all black or all white).
+        """
+        h, w = warped.shape
+        cell_size = h // grid
+        margin = 3
+        
+        # Extract inner 6x6 data region (skip outer border)
+        inner_cells = []
+        for y in range(1, 7):  # Skip row 0 and row 7
+            for x in range(1, 7):  # Skip col 0 and col 7
+                cell = warped[y*cell_size+margin:(y+1)*cell_size-margin,
+                            x*cell_size+margin:(x+1)*cell_size-margin]
+                if cell.size > 0:
+                    inner_cells.append(np.median(cell))
+        
+        if not inner_cells:
+            return False
+        
+        # Check for variation in inner pattern
+        black_cells = sum(1 for val in inner_cells if val < 128)
+        white_cells = len(inner_cells) - black_cells
+        
+        # Must have BOTH black and white cells (not all same color)
+        # AprilTags typically have 2-32 black cells out of 36
+        has_variation = (2 <= black_cells <= 34)
+        
+        return has_variation
+
+
     def find_apriltags_contours(self, image, warp_size=240):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         debug_image = image.copy()
@@ -290,7 +371,7 @@ class AprilTagDetector(Node):
         thresh = cv2.adaptiveThreshold(
             gray, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY_INV,
+            cv2.THRESH_BINARY,
             11, 2
         )
 
@@ -311,17 +392,16 @@ class AprilTagDetector(Node):
             area = cv2.contourArea(cnt)
             
             if area < 1500:
-                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 1)
                 continue
 
-            cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 0), 2)
-            
             if len(approx) != 4 or not cv2.isContourConvex(approx):
+                cv2.polylines(debug_image, [approx.astype(int)], True, (128, 128, 128), 1)
                 continue
-            has_child = hierarchy[i][2] != -1  # First_Child index
+                
+            # Must have child contours (patterns) inside
+            has_child = hierarchy[i][2] != -1
         
             if not has_child:
-                # This is just an outer square with nothing inside - skip it
                 cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 2)
                 continue
 
@@ -333,7 +413,7 @@ class AprilTagDetector(Node):
             if h > 0 and not 0.6 < w / h < 1.6:
                 continue
 
-            # Warp - IMPORTANT: Warp from ORIGINAL GRAY, not from thresh
+            # Warp from original gray image
             dst = np.array([
                 [0, 0],
                 [warp_size - 1, 0],
@@ -342,20 +422,28 @@ class AprilTagDetector(Node):
             ], dtype=np.float32)
 
             M = cv2.getPerspectiveTransform(quad.astype(np.float32), dst)
-            
-            # *** KEY FIX: Warp from original gray, not from thresh ***
             warped = cv2.warpPerspective(gray, M, (warp_size, warp_size))
+            
             if warped.std() < 20:
                 continue
-            # *** THEN apply a clean threshold to the warped image ***
-            # Try different threshold methods to see which works best:
             
+            # Apply clean threshold
             _, warped_thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             
-            # Use the thresholded version for decoding
+            # Validate border and inner pattern
+            if not self.validate_border(warped_thresh):
+                cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 255), 2)  # Magenta = no border
+                continue
+            
+            if not self.validate_inner_pattern(warped_thresh):
+                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
+                continue
+            
+            # Now decode
             tag_id = self.decode_quad(warped_thresh)
             
             if tag_id is None:
+                cv2.polylines(debug_image, [approx.astype(int)], True, (255, 165, 0), 2)  # Orange = decode failed
                 continue
 
             detected_tags.append({
@@ -363,6 +451,9 @@ class AprilTagDetector(Node):
                 "corners": quad,
                 "center": quad.mean(axis=0)
             })
+            
+            # Green = success
+            cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 0), 3)
 
         return detected_tags, debug_image
 
