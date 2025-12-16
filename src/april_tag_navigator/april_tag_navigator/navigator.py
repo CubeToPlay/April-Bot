@@ -1458,6 +1458,8 @@ class AprilTagNavigator(Node):
             msg = Bool()
             msg.data = True
             self.reach_goal_pub.publish(msg)
+            self.target_tag_visible = False
+            self.target_tag_id = 11
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
         
         # Publish the velocity of the robot
