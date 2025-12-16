@@ -180,7 +180,7 @@ class AprilTagNavigator(Node):
         # LiDAR
         self.laser_ranges = None
         """Array of distance measurements from LiDAR"""
-        self.last_scan_time = None
+        self.laser_msg = None
 
         # Timers
         self.map_wait_timer = self.create_timer(1.0, self.wait_for_map_timer)
@@ -365,27 +365,43 @@ class AprilTagNavigator(Node):
         self.marker_pub.publish(marker_array)
 
     def check_obstacle_ahead(self):
-        """Check if there's an obstacle in front using LiDAR"""
-        if self.laser_ranges is None:
-            return False, float('inf')
-        
-        # Check front 60 degrees (30 degrees each side)
-        num_ranges = len(self.laser_ranges)
-        front_angle = 30  # degrees
-        samples_per_side = int((front_angle / 360.0) * num_ranges)
-        
-        # Front center
-        front_ranges = np.concatenate([
-            self.laser_ranges[:samples_per_side],
-            self.laser_ranges[-samples_per_side:]
-        ])
-        
+        """
+        Returns:
+            critical (bool): emergency stop required
+            warning (bool): slow down / steer away
+            min_dist (float): closest obstacle ahead
+        """
+        if self.laser_msg is None:
+            return False, False, float('inf')
+
+        msg = self.laser_msg
+        ranges = np.array(msg.ranges)
+
+        # Filter invalid values
+        valid = np.isfinite(ranges)
+        ranges = ranges[valid]
+
+        if len(ranges) == 0:
+            return False, False, float('inf')
+
+        # Compute angles for each range
+        angles = msg.angle_min + np.arange(len(msg.ranges)) * msg.angle_increment
+        angles = angles[valid]
+
+        # Front ±30 degrees
+        front_mask = np.abs(angles) < math.radians(30)
+
+        front_ranges = ranges[front_mask]
+
+        if len(front_ranges) == 0:
+            return False, False, float('inf')
+
         min_dist = np.min(front_ranges)
-        
+
         critical = min_dist < self.critical_distance
         warning = min_dist < self.min_wall_distance
-        
-        return critical or warning, min_dist
+
+        return critical, warning, min_dist
 
     def goal_callback(self, msg):
         """Receive target tag ID"""
@@ -592,7 +608,7 @@ class AprilTagNavigator(Node):
         self.laser_ranges = np.array(msg.ranges)
         # This replaces the inf and nan values with max range (which is what happens when no obstacle is detected in the given direction)
         self.laser_ranges = np.where(np.isfinite(self.laser_ranges), self.laser_ranges, msg.range_max)
-        self.last_scan_time = self.get_clock().now()
+        self.laser_msg = msg
 
     def world_to_map(self, x, y):
         """Convert world to map coordinates"""
@@ -959,7 +975,7 @@ class AprilTagNavigator(Node):
         #         return
         
         # Check for obstacles
-        obstacle_detected, min_distance = self.check_obstacle_ahead()
+        critical, warning, min_distance = self.check_obstacle_ahead()
 
         # Set the current speed to 0 when idle
         if self.state == NavigationState.IDLE:
@@ -1060,30 +1076,29 @@ class AprilTagNavigator(Node):
             # Robot should determine the distance and angle to the next waypoint and move towards it.
             distance, angle_diff = nav_info
             
-            if obstacle_detected:
-                if min_distance < self.critical_distance:
-                    # Emergency stop
-                    twist.linear.x = 0.0
-                    twist.angular.z = 0.0
-                    self.get_logger().warning(
-                        f'EMERGENCY STOP! Obstacle at {min_distance:.2f}m',
-                        throttle_duration_sec=1.0
-                    )
-                    self.current_path = []
-                    self.path_index = 0
-                    self.frontier_target = None 
+            if critical:
+                # Emergency stop
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.get_logger().warning(
+                    f'EMERGENCY STOP! Obstacle at {min_distance:.2f}m',
+                    throttle_duration_sec=1.0
+                )
+                self.current_path = []
+                self.path_index = 0
+                self.frontier_target = None 
+            elif warning:
+                # Slow down near obstacles
+                speed_factor = (min_distance - self.critical_distance) / \
+                                (self.min_wall_distance - self.critical_distance)
+                speed_factor = max(0.2, min(1.0, speed_factor))
+                
+                if abs(angle_diff) > 0.5:
+                    twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                    twist.linear.x = 0.0 
                 else:
-                    # Slow down near obstacles
-                    speed_factor = (min_distance - self.critical_distance) / \
-                                 (self.min_wall_distance - self.critical_distance)
-                    speed_factor = max(0.2, min(1.0, speed_factor))
-                    
-                    if abs(angle_diff) > 0.5:
-                        twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
-                        twist.linear.x = 0.0 
-                    else:
-                        twist.linear.x = self.linear_speed * speed_factor
-                        twist.angular.z = self.angular_speed * angle_diff * 2.0
+                    twist.linear.x = self.linear_speed * speed_factor
+                    twist.angular.z = self.angular_speed * angle_diff * 2.0
             else:
                 # Normal navigation
                 if abs(angle_diff) > 0.5:
