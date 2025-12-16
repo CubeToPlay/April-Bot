@@ -9,11 +9,9 @@ import os
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('april_bot_world')
-    resources_pkg_dir = get_package_share_directory('apriltag_resources')
     pkg_path = FindPackageShare('april_bot_world') #current package
     world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    robot_sdf_path = os.path.join(resources_pkg_dir, 'models', 'turtlebot3_waffle_gz', 'model.sdf')
     return LaunchDescription([
         SetEnvironmentVariable(
             name='GZ_SIM_RESOURCE_PATH',
@@ -43,14 +41,11 @@ def generate_launch_description():
             shell=False
         ),
         Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[{
-                'use_sim_time': use_sim_time,
-                'robot_description': open(robot_sdf_path).read()
-            }]
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_to_lidar_tf',
+            arguments=['0', '0', '0.13', '0', '0', '0', 'base_link', 'base_scan'],
+            parameters=[{'use_sim_time': use_sim_time}]
         ),
         # Static transform: base_footprint -> base_scan
         Node(
