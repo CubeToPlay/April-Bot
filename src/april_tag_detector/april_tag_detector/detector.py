@@ -456,7 +456,7 @@ class AprilTagDetector(Node):
             
             # Now decode
             tag_id = self.decode_quad(warped_thresh)
-            cv2.imshow("Failed to decode", warped_thresh)
+            cv2.imshow("Failed to decode", self.draw_grid(warped_thresh))
             cv2.waitKey(1)
             
             if tag_id is None:
