@@ -452,14 +452,14 @@ class AprilTagDetector(Node):
             if not self.validate_inner_pattern(warped_thresh):
                 cv2.imshow(f"Failed inner pattern", self.draw_grid(warped_thresh, grid=8))
                 cv2.waitKey(1)
-                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 165, 255), 2)  # Cyan = no pattern
+                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 255, 255), 2)  # Cyan = no pattern
                 continue
             
             # Now decode
             tag_id = self.decode_quad(warped_thresh)
             
             if tag_id is None:
-                cv2.polylines(debug_image, [approx.astype(int)], True, (255, 165, 0), 2)  # Orange = decode failed
+                cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 0), 2)  # Orange = decode failed
                 continue
 
             detected_tags.append({
