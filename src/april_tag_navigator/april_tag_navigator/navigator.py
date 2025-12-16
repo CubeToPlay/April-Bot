@@ -657,22 +657,6 @@ class AprilTagNavigator(Node):
         start_mx, start_my = self.world_to_map(start_x, start_y)
         goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
 
-        if not (0 <= start_mx < self.map_width and 0 <= start_my < self.map_height):
-            self.get_logger().error(
-                f'Start position ({start_x:.2f}, {start_y:.2f}) -> '
-                f'map coords ({start_mx}, {start_my}) out of bounds! '
-                f'Map size: {self.map_width}x{self.map_height}'
-            )
-            return None
-            
-        if not (0 <= goal_mx < self.map_width and 0 <= goal_my < self.map_height):
-            self.get_logger().error(
-                f'Goal position ({goal_x:.2f}, {goal_y:.2f}) -> '
-                f'map coords ({goal_mx}, {goal_my}) out of bounds! '
-                f'Map size: {self.map_width}x{self.map_height}'
-            )
-            return None
-
         # Check if the starting location is valid (if it is free)
         if not self.is_free(start_mx, start_my):
             self.get_logger().warning('Start position is not free')
@@ -948,6 +932,126 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'Loaded {len(self.discovered_tags)} tags')
         except Exception as e:
             self.get_logger().error(f'Load failed: {e}')
+
+    def find_best_frontier_toward_goal(self, goal_x, goal_y):
+        """
+        Find frontiers weighted by:
+        - Distance from robot (closer is better)
+        - Distance to goal (closer to goal is better)
+        
+        Returns list of frontiers sorted by combined score
+        """
+        if self.map_data is None or self.robot_pose is None:
+            return None
+
+        robot_mx, robot_my = self.world_to_map(
+            self.robot_pose['x'], self.robot_pose['y']
+        )
+
+        candidates = []
+        MAX_RADIUS = int(10.0 / self.map_resolution)
+
+        for dy in range(-MAX_RADIUS, MAX_RADIUS):
+            for dx in range(-MAX_RADIUS, MAX_RADIUS):
+                mx = robot_mx + dx
+                my = robot_my + dy
+
+                if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
+                    continue
+
+                if self.map_data[my, mx] >= 50:
+                    continue
+                
+                if self.map_data[my, mx] == -1:
+                    continue
+
+                # Check if this cell is adjacent to unknown space
+                has_unknown_neighbor = False
+                for nx, ny in [(mx+1,my), (mx-1,my), (mx,my+1), (mx,my-1)]:
+                    if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
+                        if self.map_data[ny, nx] == -1:
+                            has_unknown_neighbor = True
+                            break
+                
+                if not has_unknown_neighbor:
+                    continue
+
+                wx, wy = self.map_to_world(mx, my)
+                
+                # Distance from robot
+                dist_from_robot = math.hypot(wx - self.robot_pose['x'], wy - self.robot_pose['y'])
+                
+                if dist_from_robot < 0.6:  # Skip too close
+                    continue
+                
+                # Distance to goal
+                dist_to_goal = math.hypot(wx - goal_x, wy - goal_y)
+                
+                candidates.append((dist_from_robot, dist_to_goal, wx, wy))
+
+        if not candidates:
+            self.get_logger().warning(
+                "No frontier found.",
+                throttle_duration_sec=2.0
+            )
+            return None
+
+        # Cluster frontiers
+        clusters = {}
+        for dist_robot, dist_goal, x, y in candidates:
+            key = (round(x / 0.5) * 0.5, round(y / 0.5) * 0.5)
+            clusters.setdefault(key, []).append((dist_robot, dist_goal, x, y))
+
+        # Get cluster centroids with scores
+        cluster_data = []
+        for cluster_points in clusters.values():
+            # Centroid position
+            avg_x = sum(p[2] for p in cluster_points) / len(cluster_points)
+            avg_y = sum(p[3] for p in cluster_points) / len(cluster_points)
+            
+            # Average distances
+            avg_dist_robot = sum(p[0] for p in cluster_points) / len(cluster_points)
+            avg_dist_goal = sum(p[1] for p in cluster_points) / len(cluster_points)
+            
+            cluster_data.append((avg_dist_robot, avg_dist_goal, avg_x, avg_y, len(cluster_points)))
+        
+        # Score function: weighted combination
+        # Lower score is better
+        ROBOT_WEIGHT = 0.3   # Weight for distance from robot (30%)
+        GOAL_WEIGHT = 0.7    # Weight for distance to goal (70%)
+        
+        scored_frontiers = []
+        for dist_robot, dist_goal, x, y, size in cluster_data:
+            # Normalize distances to [0, 1] range
+            max_dist_robot = max(c[0] for c in cluster_data)
+            max_dist_goal = max(c[1] for c in cluster_data)
+            
+            norm_dist_robot = dist_robot / max_dist_robot if max_dist_robot > 0 else 0
+            norm_dist_goal = dist_goal / max_dist_goal if max_dist_goal > 0 else 0
+            
+            # Combined score (lower is better)
+            score = ROBOT_WEIGHT * norm_dist_robot + GOAL_WEIGHT * norm_dist_goal
+            
+            scored_frontiers.append((score, dist_robot, dist_goal, x, y))
+        
+        # Sort by score (best first)
+        scored_frontiers.sort()
+        
+        # Return top 5 as list of (distance, x, y) for compatibility
+        result = [(f[1], f[3], f[4]) for f in scored_frontiers[:5]]
+        
+        if result:
+            best = scored_frontiers[0]
+            self.get_logger().info(
+                f"Found {len(candidates)} frontier candidates in {len(cluster_data)} clusters\n"
+                f"  Best: ({best[3]:.2f}, {best[4]:.2f})\n"
+                f"    - Distance from robot: {best[1]:.2f}m\n"
+                f"    - Distance to goal: {best[2]:.2f}m\n"
+                f"    - Score: {best[0]:.3f}",
+                throttle_duration_sec=2.0
+            )
+        
+        return result
     
     def navigation_loop(self):
         """Main control loop"""
@@ -1009,6 +1113,41 @@ class AprilTagNavigator(Node):
                 # Stand-off goal in front of tag
                 goal_x = tag['x'] - ux * self.approach_distance
                 goal_y = tag['y'] - uy * self.approach_distance
+                goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
+                if not (0 <= goal_mx < self.map_width and 0 <= goal_my < self.map_height):
+                    frontiers = self.find_best_frontier_toward_goal(goal_x, goal_y)
+                    if not frontiers:
+                        self.get_logger().warning('No frontiers found, staying idle')
+                        self.state = NavigationState.IDLE
+                        self.cmd_vel_pub.publish(twist)
+                        return
+                    path_found = False
+                    for i, frontier in enumerate(frontiers):
+                        self.get_logger().info(
+                            f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
+                            throttle_duration_sec=1.0
+                        )
+                        twist.linear.x = 0.0
+                        twist.angular.z = 0.0
+                        self.current_path = self.astar_planning(
+                            self.robot_pose['x'], self.robot_pose['y'],
+                            frontier[1], frontier[2], allow_unknown = True
+                        )
+                        
+                        if self.current_path:
+                            self.frontier_target = frontier
+                            self.path_index = 0
+                            self.state = NavigationState.NAVIGATING
+                            self.publish_path(self.current_path)
+                            self.get_logger().info(
+                                f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
+                            )
+                            path_found = True
+                            break
+                    
+                    if not path_found:
+                        self.get_logger().warning('No reachable frontier found, staying idle')
+                        self.state = NavigationState.IDLE
                 self.current_path = self.astar_planning(
                     self.robot_pose['x'], self.robot_pose['y'],
                     goal_x, goal_y
@@ -1030,7 +1169,7 @@ class AprilTagNavigator(Node):
                     self.cmd_vel_pub.publish(twist)
                     return
                 path_found = False
-                for i, frontier in enumerate(frontiers):  # Try top 5 closest
+                for i, frontier in enumerate(frontiers):
                     self.get_logger().info(
                         f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
                         throttle_duration_sec=1.0
