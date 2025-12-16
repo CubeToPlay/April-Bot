@@ -1092,14 +1092,14 @@ class AprilTagNavigator(Node):
             twist.angular.z = 0.0
         
         elif self.state == NavigationState.PLANNING:
-            if self.robot_pose is None:
+             if self.robot_pose is None:
                 self.get_logger().info(f"Robot pose is NONE")
                 return
             
-            # The tag is known, so the PLANNING state will run A* from the current position to the known tag location
+            # ========== KNOWN TAG ==========
             if self.target_tag_id in self.discovered_tags:
-                # Plan to known tag
                 tag = self.discovered_tags[self.target_tag_id]
+                
                 # Vector from robot → tag
                 dx = tag['x'] - self.robot_pose['x']
                 dy = tag['y'] - self.robot_pose['y']
@@ -1113,72 +1113,96 @@ class AprilTagNavigator(Node):
                 # Stand-off goal in front of tag
                 goal_x = tag['x'] - ux * self.approach_distance
                 goal_y = tag['y'] - uy * self.approach_distance
+                
+                # Check if goal is in map bounds
                 goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
-                if not (0 <= goal_mx < self.map_width and 0 <= goal_my < self.map_height):
-                    frontiers = self.find_best_frontier_toward_goal(goal_x, goal_y)
-                    if not frontiers:
-                        self.get_logger().warning('No frontiers found, staying idle')
-                        self.state = NavigationState.IDLE
+                goal_in_bounds = (0 <= goal_mx < self.map_width and 
+                                0 <= goal_my < self.map_height)
+                
+                if goal_in_bounds:
+                    # Try direct path to tag
+                    self.get_logger().info(f'Planning direct path to tag at ({goal_x:.2f}, {goal_y:.2f})')
+                    self.current_path = self.astar_planning(
+                        self.robot_pose['x'], self.robot_pose['y'],
+                        goal_x, goal_y
+                    )
+
+                    if self.current_path:
+                        self.path_index = 0
+                        self.state = NavigationState.NAVIGATING
+                        self.publish_path(self.current_path)
+                        self.get_logger().info(f'Path planned to tag: {len(self.current_path)} waypoints')
+                        # Exit planning - we're done!
                         self.cmd_vel_pub.publish(twist)
                         return
-                    path_found = False
-                    for i, frontier in enumerate(frontiers):
-                        self.get_logger().info(
-                            f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
-                            throttle_duration_sec=1.0
-                        )
-                        twist.linear.x = 0.0
-                        twist.angular.z = 0.0
-                        self.current_path = self.astar_planning(
-                            self.robot_pose['x'], self.robot_pose['y'],
-                            frontier[1], frontier[2], allow_unknown = True
-                        )
-                        
-                        if self.current_path:
-                            self.frontier_target = frontier
-                            self.path_index = 0
-                            self.state = NavigationState.NAVIGATING
-                            self.publish_path(self.current_path)
-                            self.get_logger().info(
-                                f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
-                            )
-                            path_found = True
-                            break
-                    
-                    if not path_found:
-                        self.get_logger().warning('No reachable frontier found, staying idle')
-                        self.state = NavigationState.IDLE
-                self.current_path = self.astar_planning(
-                    self.robot_pose['x'], self.robot_pose['y'],
-                    goal_x, goal_y
-                )
-
-                if self.current_path:
-                    self.path_index = 0
-                    self.state = NavigationState.NAVIGATING
-                    self.publish_path(self.current_path)
-                    self.get_logger().info(f'Path planned: {len(self.current_path)} waypoints')
+                    else:
+                        self.get_logger().warning('Direct path to tag blocked')
                 else:
+                    self.get_logger().warning(
+                        f'Tag goal ({goal_x:.2f}, {goal_y:.2f}) is out of bounds, '
+                        f'using guided exploration'
+                    )
+                
+                # If we reach here, either goal was out of bounds or direct path failed
+                # Use goal-directed frontier exploration
+                self.get_logger().info(f'Exploring toward tag at ({tag["x"]:.2f}, {tag["y"]:.2f})')
+                frontiers = self.find_best_frontier_toward_goal(tag['x'], tag['y'])
+                
+                if not frontiers:
+                    self.get_logger().warning('No frontiers toward goal, staying idle')
                     self.state = NavigationState.IDLE
+                    self.cmd_vel_pub.publish(twist)
+                    return
+                
+                # Try to plan to frontiers
+                path_found = False
+                for i, frontier in enumerate(frontiers):
+                    self.get_logger().info(
+                        f'Trying frontier {i+1}/{len(frontiers)}: ({frontier[1]:.2f}, {frontier[2]:.2f})'
+                    )
+                    
+                    self.current_path = self.astar_planning(
+                        self.robot_pose['x'], self.robot_pose['y'],
+                        frontier[1], frontier[2], 
+                        allow_unknown=True
+                    )
+                    
+                    if self.current_path:
+                        self.frontier_target = frontier
+                        self.path_index = 0
+                        self.state = NavigationState.NAVIGATING
+                        self.publish_path(self.current_path)
+                        self.get_logger().info(
+                            f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
+                        )
+                        path_found = True
+                        break
+                
+                if not path_found:
+                    self.get_logger().warning('No reachable frontier toward goal, staying idle')
+                    self.state = NavigationState.IDLE
+            
+            # ========== UNKNOWN TAG ==========
             else:
-                # The tag is unknown, so the PLANNING state will run A* from the current position to the closes unexplored location
+                self.get_logger().info('Tag unknown, exploring frontiers')
                 frontiers = self.find_frontier()
+                
                 if not frontiers:
                     self.get_logger().warning('No frontiers found, staying idle')
                     self.state = NavigationState.IDLE
                     self.cmd_vel_pub.publish(twist)
                     return
+                
                 path_found = False
                 for i, frontier in enumerate(frontiers):
                     self.get_logger().info(
-                        f'Trying frontier {i+1}: ({frontier[1]:.2f}, {frontier[2]:.2f})',
-                        throttle_duration_sec=1.0
+                        f'Trying frontier {i+1}/{len(frontiers)}: ({frontier[1]:.2f}, {frontier[2]:.2f})'
                     )
-                    twist.linear.x = 0.0
-                    twist.angular.z = 0.0
+                    
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
-                        frontier[1], frontier[2], allow_unknown = True
+                        frontier[1], frontier[2], 
+                        allow_unknown=True
                     )
                     
                     if self.current_path:
