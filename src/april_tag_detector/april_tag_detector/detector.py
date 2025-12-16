@@ -302,6 +302,8 @@ class AprilTagDetector(Node):
 
         if hierarchy is None:
             return detected_tags, image
+        
+        hierarchy = hierarchy[0]
 
         for i, cnt in enumerate(contours):
             peri = cv2.arcLength(cnt, True)
@@ -315,6 +317,12 @@ class AprilTagDetector(Node):
             cv2.polylines(debug_image, [approx.astype(int)], True, (255, 0, 0), 2)
             
             if len(approx) != 4 or not cv2.isContourConvex(approx):
+                continue
+            has_child = hierarchy[i][2] != -1  # First_Child index
+        
+            if not has_child:
+                # This is just an outer square with nothing inside - skip it
+                cv2.polylines(debug_image, [approx.astype(int)], True, (0, 0, 255), 2)
                 continue
 
             quad = self.order_points(approx.reshape(4, 2))
@@ -342,19 +350,7 @@ class AprilTagDetector(Node):
             # *** THEN apply a clean threshold to the warped image ***
             # Try different threshold methods to see which works best:
             
-            # Option 1: Otsu's method (automatic threshold)
             _, warped_thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            
-            # Option 2: Simple fixed threshold
-            # _, warped_thresh = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
-            
-            # Option 3: Adaptive threshold (if lighting varies)
-            # warped_thresh = cv2.adaptiveThreshold(
-            #     warped, 255,
-            #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            #     cv2.THRESH_BINARY,
-            #     31, 10
-            # )
             
             # Use the thresholded version for decoding
             tag_id = self.decode_quad(warped_thresh)
