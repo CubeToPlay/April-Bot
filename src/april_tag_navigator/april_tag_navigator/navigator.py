@@ -1134,24 +1134,30 @@ class AprilTagNavigator(Node):
             if self.target_tag_distance <= self.approach_distance:
                 self.state = NavigationState.REACHED
                 self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
             # If the robot has not been reached and is still visible, move toward the tag
             else:
                 # Calculate angular velocity to center the tag
                 # target_tag_angle is in degrees, positive = tag is to the right
                 angle_error_rad = math.radians(self.target_tag_angle)
-                
-                # Proportional control for turning
-                angular_vel = -angle_error_rad * 2.0  # Gain of 2.0
-                
-                # Clamp angular velocity
-                max_angular = self.angular_speed
-                angular_vel = max(-max_angular, min(max_angular, angular_vel))
-                
-                # Slow down linear speed when turning sharply
-                if abs(angle_error_rad) > math.radians(15):  # > 15 degrees off
-                    twist.linear.x = self.linear_speed * 0.3
-                else:
+                ANGLE_DEAD_ZONE = math.radians(3.0)
+
+                if abs(angle_error_rad) < ANGLE_DEAD_ZONE:
+                    # Centered - drive straight toward tag
+                    angular_vel = 0.0
                     twist.linear.x = self.linear_speed * 0.7
+                else:
+                    ANGULAR_GAIN = 1.5  # Reduced from 2.0
+                    angular_vel = -angle_error_rad * ANGULAR_GAIN
+                    
+                    # Clamp angular velocity
+                    max_angular = self.angular_speed * 0.6  # Use 60% of max for smoother control
+                    angular_vel = max(-max_angular, min(max_angular, angular_vel))
+                    
+                    # Reduce forward speed when turning
+                    speed_reduction = 1.0 - (abs(angle_error_rad) / math.radians(20))
+                    twist.linear.x = self.linear_speed * 0.5 * speed_reduction
                 
                 twist.angular.z = angular_vel
                 
