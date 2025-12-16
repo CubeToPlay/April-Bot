@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist, PoseStamped
+from geometry_msgs.msg import Twist, PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid, Path
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
@@ -119,7 +119,7 @@ class AprilTagNavigator(Node):
         # Publishers
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         """Publishes velocity commands to robot."""
-        self.path_pub = self.create_publisher(Path, '/planned_path', 10)
+        self.path_pub = self.create_publisher(Marker, '/planned_path', 10)
         """Publishes A* path for visualization in RViz. Used for debugging path."""
         self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
@@ -693,6 +693,7 @@ class AprilTagNavigator(Node):
                 continue
             
             visited.add(current)
+            self.publish_path(self.reconstruct_path(came_from, current), True)
 
             # If the goal is reached, reconstruct the path in order for the robot to actually be able to make it to the goal location
             if current == (goal_mx, goal_my):
@@ -847,23 +848,42 @@ class AprilTagNavigator(Node):
         
         return result
     
-    def publish_path(self, path):
+    def publish_path(self, path, test_paths=False):
         """Publish path for visualization
         RViz displays the path that is published
         """
-        
-        path_msg = Path()
-        path_msg.header.frame_id = 'map'
-        path_msg.header.stamp = self.get_clock().now().to_msg()
+        marker = Marker()
+        marker.header.frame_id = 'map'
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = "navigator_path"
+        marker.id = 0
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+        # ---- Appearance ----
+        marker.scale.x = 0.05  # line width (meters)
+        if not test_paths:
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0
+        else:
+            marker.color.r = 1.0
+            marker.color.g = 0.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0
+
+        # ---- Convert poses to points ----
+        marker.points = []
+
         if path:
             for x, y in path:
-                pose = PoseStamped()
-                pose.header = path_msg.header
-                pose.pose.position.x = x
-                pose.pose.position.y = y
-                path_msg.poses.append(pose)
+                p = Point()
+                p.x = x
+                p.y = y
+                p.z = 0.05
+                marker.points.append(p)
         
-        self.path_pub.publish(path_msg)
+        self.path_pub.publish(marker)
 
     def follow_path(self):
         """Follow current A* path"""
@@ -871,6 +891,7 @@ class AprilTagNavigator(Node):
             return None
         
         # Gets the current waypoint the robot has to go to in order to continue on the planned path
+        self.publish_path(self.current_path[self.path_index:])
         waypoint = self.current_path[self.path_index]
         
         # Compute the distance between the robot and the waypoint
