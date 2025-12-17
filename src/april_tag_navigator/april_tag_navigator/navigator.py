@@ -1353,6 +1353,9 @@ class AprilTagNavigator(Node):
             # Stand-off goal in front of tag
             goal_x = tag['x'] - ux * self.approach_distance
             goal_y = tag['y'] - uy * self.approach_distance
+            if not self.is_free(goal_x, goal_y, allow_unknown=True):
+                goal_x -= ux * self.approach_distance 
+                goal_y -= uy * self.approach_distance
 
             if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
