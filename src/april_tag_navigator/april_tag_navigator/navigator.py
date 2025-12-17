@@ -1425,7 +1425,7 @@ class AprilTagNavigator(Node):
             self.current_path = []
             self.publish_path(self.current_path)
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
-        elif self.state == NavigationState.RECOVERING:
+        elif self.state == NavigationState.RECOVERY:
             now = self.get_clock().now()
             elapsed = (now - self.recovery_start_time).nanoseconds * 1e-9
 
