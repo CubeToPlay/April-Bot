@@ -1106,7 +1106,7 @@ class AprilTagNavigator(Node):
         self.last_yaw = current_yaw
 
     def scan_complete(self):
-        return self.accumulated_yaw >= self.SCAN_TARGET
+        return self.accumulated_yaw >= self.scan_target
     
     def navigation_loop(self):
         """Main control loop"""
