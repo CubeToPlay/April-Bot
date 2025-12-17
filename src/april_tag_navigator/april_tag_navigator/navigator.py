@@ -1407,7 +1407,7 @@ class AprilTagNavigator(Node):
             if goal_is_invalid:
 
                 projected_goal = self.project_goal_to_reachable(
-                    goal_x, goal_y, reachable
+                    tag['x'], tag['y'], reachable
                 )
                 if projected_goal is None:
                     self.get_logger().warn("No reachable projection found")
