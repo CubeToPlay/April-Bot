@@ -32,6 +32,51 @@ def generate_launch_description():
             'cancel_command': 11
         }]
     )
+    # Static transform: base_footprint -> base_link (robot model offset)
+    base_footprint_to_base_link = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_footprint_to_base_link',
+        arguments=['0', '0', '0.06', '0', '0', '0', 'base_footprint', 'base_link'],
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
+
+    # Static transform: base_link -> base_scan (LiDAR)
+    base_link_to_lidar = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_link_to_lidar',
+        arguments=['0', '0', '0.07', '0', '0', '0', 'base_link', 'base_scan'],
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
+
+    # Static transform: base_link -> camera_link
+    base_link_to_camera = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_link_to_camera',
+        arguments=['0.073', '-0.011', '0.024', '0', '0', '0', 'base_link', 'camera_link'],
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
+
+    # Static transform: camera_link -> camera_rgb_frame
+    camera_to_rgb = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='camera_to_rgb',
+        arguments=['0', '0', '0', '0', '0', '0', 'camera_link', 'camera_rgb_frame'],
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
+
+    # Static transform: camera_rgb_frame -> camera_rgb_optical_frame
+    camera_rgb_to_optical = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='camera_rgb_to_optical',
+        arguments=['0', '0', '0', '-1.5708', '0', '-1.5708', 'camera_rgb_frame', 'camera_rgb_optical_frame'],
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
+
 
     slam_toolbox_node = LifecycleNode(
         package='slam_toolbox',
@@ -91,6 +136,13 @@ def generate_launch_description():
     
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
+        # Static transforms FIRST
+        base_footprint_to_base_link,
+        base_link_to_lidar,
+        base_link_to_camera,
+        camera_to_rgb,
+        camera_rgb_to_optical,
+        # Then SLAM and navigation
         slam_toolbox_node,
         emit_configure_on_start,
         activate_slam,

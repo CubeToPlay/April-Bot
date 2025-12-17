@@ -41,47 +41,6 @@ def generate_launch_description():
             shell=False
         ),
         Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='base_to_lidar_tf',
-            arguments=['0', '0', '0.13', '0', '0', '0', 'base_link', 'base_scan'],
-            parameters=[{'use_sim_time': use_sim_time}]
-        ),
-        # Static transform: base_footprint -> base_scan
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='base_footprint_to_base_scan',
-            output='screen',
-            arguments=['--x', '0', '--y', '0', '--z', '0.172', 
-                      '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1',
-                      '--frame-id', 'base_footprint', '--child-frame-id', 'base_scan'],
-            parameters=[{'use_sim_time': True}]
-        ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='camera_rgb_optical_tf',
-            arguments=[
-                '0', '0', '0',          # translation
-                '-1.5708', '0', '-1.5708',  # roll pitch yaw
-                'camera_rgb_frame',    # parent
-                'camera_rgb_optical_frame'  # child
-            ]
-        ),
-        
-        # Static transform: base_footprint -> camera_rgb_frame
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='base_footprint_to_camera',
-            output='screen',
-            arguments=['--x', '0.073', '--y', '-0.011', '--z', '0.084',
-                      '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1', 
-                      '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
-            parameters=[{'use_sim_time': True}]
-        ),
-        Node(
             package='april_bot_world',
             executable='odom_to_tf',
             name='odom_to_tf',
