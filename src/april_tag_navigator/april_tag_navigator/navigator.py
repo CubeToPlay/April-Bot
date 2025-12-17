@@ -17,6 +17,7 @@ from enum import Enum
 import json
 import os
 import heapq
+from collections import deque
 
 from april_tag_msgs.msg import AprilTagDetection, AprilTagDetectionArray
 
@@ -1109,6 +1110,46 @@ class AprilTagNavigator(Node):
     def scan_complete(self):
         return self.total_yaw >= self.scan_target
     
+    def compute_reachable_free_space(self):
+        """Return a set of map cells reachable from robot through FREE space only"""
+        start = self.world_to_map(self.robot_pose['x'], self.robot_pose['y'])
+        visited = set()
+        q = deque([start])
+
+        while q:
+            cx, cy = q.popleft()
+            if (cx, cy) in visited:
+                continue
+            visited.add((cx, cy))
+
+            for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+                nx, ny = cx + dx, cy + dy
+                if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
+                    if self.map_data[ny, nx] < 50 and self.map_data[ny, nx] != -1:
+                        q.append((nx, ny))
+
+        return visited
+    
+    def project_goal_to_reachable(self, goal_wx, goal_wy, reachable):
+        gx, gy = self.world_to_map(goal_wx, goal_wy)
+
+        best_cell = None
+        best_dist = float('inf')
+
+        for (mx, my) in reachable:
+            if self.map_data[my, mx] >= 50:
+                continue
+
+            d = (mx - gx)**2 + (my - gy)**2
+            if d < best_dist:
+                best_dist = d
+                best_cell = (mx, my)
+
+        if best_cell is None:
+            return None
+
+        return self.map_to_world(*best_cell)
+    
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
@@ -1337,121 +1378,90 @@ class AprilTagNavigator(Node):
         
         elif self.state == NavigationState.TRACKING:
             # If the tag is no longer visible, replan the path to the tag
-            # if not self.target_tag_visible:
-            #     self.state = NavigationState.PLANNING
-            #     self.cmd_vel_pub.publish(twist)
-            #     return
-            if self.target_tag_angle is None or self.target_tag_distance is None:
-                twist.angular.z = 0.0
-                twist.linear.x = 0.0
-                self.cmd_vel_pub.publish(twist)
-                return
-            angle = math.radians(self.target_tag_angle)
-            dist = self.target_tag_distance
 
-            if dist < self.approach_distance or not self.target_tag_visible:
+            tag = self.discovered_tags[self.target_tag_id]
+            tag_x = tag['x']
+            tag_y = tag['y']
+
+            dx = tag_x - self.robot_pose['x']
+            dy = tag_y - self.robot_pose['y']
+            dist = math.hypot(dx, dy)
+
+            ux, uy = dx / dist, dy / dist
+
+            raw_goal_x = tag_x - ux * self.approach_distance
+            raw_goal_y = tag_y - uy * self.approach_distance
+
+            reachable = self.compute_reachable_free_space()
+
+            goal_x, goal_y = self.project_goal_to_reachable(
+                raw_goal_x, raw_goal_y, reachable
+            )
+
+            if not self.current_path and dist > self.approach_distance:
+                self.current_path = self.astar_planning(
+                    self.robot_pose['x'], self.robot_pose['y'],
+                    goal_x, goal_y,
+                    allow_unknown=False
+                )
+
+                if self.current_path:
+                    self.path_index = 0
+                    self.publish_path(self.current_path)
+                    self.get_logger().info(f'Path planned to tag: {len(self.current_path)} waypoints')
+            nav_info = self.follow_path()
+            if nav_info is None:
                 self.state = NavigationState.REACHED
-                twist.angular.z = 0.0
+                self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
                 twist.linear.x = 0.0
+                twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
+                self.target_tag_visible = False
+                self.target_tag_id = 11
                 return
             
+            distance, angle_diff = nav_info
             
-            if abs(angle) < math.radians(2.0):
-                twist.angular.z = 0.0
-            else:
-                twist.angular.z = self.angular_speed * angle
-            twist.linear.x = min(self.linear_speed, 0.5 * dist)
-
-            critical, warning, min_dist = self.check_obstacle_ahead()
             if critical:
+                # Emergency stop
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
-
-            # tag = self.discovered_tags[self.target_tag_id]
+                self.get_logger().warning(
+                    f'EMERGENCY STOP! Obstacle at {min_distance:.2f}m',
+                    throttle_duration_sec=1.0
+                )
+                self.current_path = []
+                self.path_index = 0
+                self.frontier_target = None 
+            elif warning:
+                # Slow down near obstacles
+                speed_factor = (min_distance - self.critical_distance) / \
+                                (self.min_wall_distance - self.critical_distance)
+                speed_factor = max(0.2, min(1.0, speed_factor))
                 
-            # # Vector from robot → tag
-            # dx = tag['x'] - self.robot_pose['x']
-            # dy = tag['y'] - self.robot_pose['y']
-            # dist = math.hypot(dx, dy)
-
-            # if dist > 0.001:
-            #     ux, uy = dx / dist, dy / dist
-            # else:
-            #     ux, uy = 0.0, 0.0
-
-            # # Stand-off goal in front of tag
-            # goal_x = tag['x'] - ux * self.approach_distance
-            # goal_y = tag['y'] - uy * self.approach_distance
-            # goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
-            # if not self.is_free(goal_mx, goal_my, allow_unknown=True):
-            #     self.get_logger().info(f"Goal ({goal_x}, {goal_y}) not free. Getting further in front of it.")
-            #     goal_x -= ux * self.approach_distance 
-            #     goal_y -= uy * self.approach_distance
-
-            # if not self.current_path and dist > self.approach_distance:
-            #     self.current_path = self.astar_planning(
-            #         self.robot_pose['x'], self.robot_pose['y'],
-            #         goal_x, goal_y
-            #     )
-
-            #     if self.current_path:
-            #         self.path_index = 0
-            #         self.publish_path(self.current_path)
-            #         self.get_logger().info(f'Path planned to tag: {len(self.current_path)} waypoints')
-            # nav_info = self.follow_path()
-            # if nav_info is None:
-            #     self.state = NavigationState.REACHED
-            #     self.get_logger().info(f'REACHED tag {self.target_tag_id}!')
-            #     twist.linear.x = 0.0
-            #     twist.angular.z = 0.0
-            #     self.cmd_vel_pub.publish(twist)
-            #     self.target_tag_visible = False
-            #     self.target_tag_id = 11
-            #     return
+                if abs(angle_diff) > 0.5:
+                    twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                    twist.linear.x = 0.0 
+                else:
+                    twist.linear.x = self.linear_speed * speed_factor
+                    twist.angular.z = self.angular_speed * angle_diff * 2.0
+            else:
+                # Normal navigation
+                if abs(angle_diff) > 0.5:
+                    twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
+                    twist.linear.x = 0.0 
+                elif abs(angle_diff) > 0.2:
+                    twist.angular.z = self.angular_speed * (angle_diff / abs(angle_diff))
+                    twist.linear.x = self.linear_speed * 0.5
+                else:
+                    twist.linear.x = self.linear_speed
+                    twist.angular.z = self.angular_speed * angle_diff * 2.0
             
-            # distance, angle_diff = nav_info
-            
-            # if critical:
-            #     # Emergency stop
-            #     twist.linear.x = 0.0
-            #     twist.angular.z = 0.0
-            #     self.get_logger().warning(
-            #         f'EMERGENCY STOP! Obstacle at {min_distance:.2f}m',
-            #         throttle_duration_sec=1.0
-            #     )
-            #     self.current_path = []
-            #     self.path_index = 0
-            #     self.frontier_target = None 
-            # elif warning:
-            #     # Slow down near obstacles
-            #     speed_factor = (min_distance - self.critical_distance) / \
-            #                     (self.min_wall_distance - self.critical_distance)
-            #     speed_factor = max(0.2, min(1.0, speed_factor))
-                
-            #     if abs(angle_diff) > 0.5:
-            #         twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
-            #         twist.linear.x = 0.0 
-            #     else:
-            #         twist.linear.x = self.linear_speed * speed_factor
-            #         twist.angular.z = self.angular_speed * angle_diff * 2.0
-            # else:
-            #     # Normal navigation
-            #     if abs(angle_diff) > 0.5:
-            #         twist.angular.z = self.angular_speed * (1.0 if angle_diff > 0 else -1.0)
-            #         twist.linear.x = 0.0 
-            #     elif abs(angle_diff) > 0.2:
-            #         twist.angular.z = self.angular_speed * (angle_diff / abs(angle_diff))
-            #         twist.linear.x = self.linear_speed * 0.5
-            #     else:
-            #         twist.linear.x = self.linear_speed
-            #         twist.angular.z = self.angular_speed * angle_diff * 2.0
-            
-            # self.get_logger().info(
-            #     f'Nav: wp {self.path_index}/{len(self.current_path)}, '
-            #     f'dist={distance:.2f}m, angle={math.degrees(angle_diff):.1f}°',
-            #     throttle_duration_sec=1.0
-            # )
+            self.get_logger().info(
+                f'Nav: wp {self.path_index}/{len(self.current_path)}, '
+                f'dist={distance:.2f}m, angle={math.degrees(angle_diff):.1f}°',
+                throttle_duration_sec=1.0
+            )
         # If the robot has reached the tag, the robot should become idle and wait for new commands
         elif self.state == NavigationState.REACHED:
             twist.linear.x = 0.0
