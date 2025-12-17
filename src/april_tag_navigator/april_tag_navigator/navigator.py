@@ -1341,7 +1341,7 @@ class AprilTagNavigator(Node):
             #     self.state = NavigationState.PLANNING
             #     self.cmd_vel_pub.publish(twist)
             #     return
-            if self.target_tag_angle is None:
+            if self.target_tag_angle is None or self.target_tag_distance is None:
                 twist.angular.z = 0.0
                 twist.linear.x = 0.0
                 self.cmd_vel_pub.publish(twist)
