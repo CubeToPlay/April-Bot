@@ -659,7 +659,6 @@ class AprilTagNavigator(Node):
             
             visited.add(current)
             self.publish_path(self.reconstruct_path(came_from, current), True)
-            cx, cy = current
             
             # If the goal is reached, reconstruct the path in order for the robot to actually be able to make it to the goal location
             if current == (goal_mx, goal_my):
@@ -1276,7 +1275,10 @@ class AprilTagNavigator(Node):
             if nav_info is None:
                 # If the target AprilTag has been discovered, the robot should then move directly to the tag
                 if self.target_tag_id in self.discovered_tags:
-                    self.state = NavigationState.TRACKING
+                    if self.target_tag_id in self.current_detections:
+                        self.state = NavigationState.TRACKING
+                    else:
+                        self.state = NavigationState.PLANNING
                 else:
                     self.start_scan()
                     self.state = NavigationState.SCANNING
