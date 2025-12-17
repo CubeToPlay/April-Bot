@@ -731,74 +731,120 @@ class AprilTagNavigator(Node):
         )
 
         candidates = []
-        MAX_RADIUS = int(10.0 / self.map_resolution)
+        MAX_RADIUS = int(15.0 / self.map_resolution)  # Increased search radius
+        MIN_DIST = 0.8  # Minimum distance from robot
 
         for dy in range(-MAX_RADIUS, MAX_RADIUS):
             for dx in range(-MAX_RADIUS, MAX_RADIUS):
                 mx = robot_mx + dx
                 my = robot_my + dy
 
+                # Check bounds
                 if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
                     continue
 
-                if self.map_data[my, mx] >= 50:
-                    continue
-                
-                if self.map_data[my, mx] == -1:
+                # MUST be free space (0-49)
+                cell_value = self.map_data[my, mx]
+                if cell_value < 0 or cell_value >= 50:
                     continue
 
-                # Check if this cell is adjacent to unknown space
+                # Check if adjacent to unknown space
                 has_unknown_neighbor = False
-                for nx, ny in [(mx+1,my), (mx-1,my), (mx,my+1), (mx,my-1)]:
+                unknown_count = 0
+                
+                # Check 8-connected neighbors for more robust frontier detection
+                for nx, ny in [(mx+1,my), (mx-1,my), (mx,my+1), (mx,my-1),
+                               (mx+1,my+1), (mx+1,my-1), (mx-1,my+1), (mx-1,my-1)]:
                     if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
                         if self.map_data[ny, nx] == -1:
                             has_unknown_neighbor = True
-                            break
+                            unknown_count += 1
                 
                 if not has_unknown_neighbor:
                     continue
 
+                # Distance check
                 dist = math.hypot(mx - robot_mx, my - robot_my)
-                if dist * self.map_resolution < 0.6:
+                if dist * self.map_resolution < MIN_DIST:
                     continue
                 
                 wx, wy = self.map_to_world(mx, my)
-                candidates.append((dist, wx, wy))
+                
+                # Weight by number of unknown neighbors (prefer edges with more unknown space)
+                candidates.append((dist, wx, wy, unknown_count))
 
         if not candidates:
             self.get_logger().warning(
-                "No frontier found. Try moving to explore more.",
+                "No frontier found. Map may be fully explored.",
                 throttle_duration_sec=2.0
             )
             return None
 
-        # Cluster frontiers
-        clusters = {}
-        for dist, x, y in candidates:
-            key = (round(x / 0.5) * 0.5, round(y / 0.5) * 0.5)  # 0.5m grid clustering
-            clusters.setdefault(key, []).append((dist, x, y))
+        self.get_logger().info(
+            f"Found {len(candidates)} raw frontier cells",
+            throttle_duration_sec=2.0
+        )
 
-        # Get top 5 clusters by size
-        sorted_clusters = sorted(clusters.values(), key=len, reverse=True)[:5]
+        # Cluster frontiers with adjusted resolution
+        clusters = {}
+        CLUSTER_SIZE = 0.4  # Smaller clusters for better separation
         
-        result = []
-        for cluster in sorted_clusters:
-            # Get centroid of cluster
-            avg_x = sum(p[1] for p in cluster) / len(cluster)
-            avg_y = sum(p[2] for p in cluster) / len(cluster)
-            # Distance from robot to centroid
+        for dist, x, y, unk_count in candidates:
+            key = (round(x / CLUSTER_SIZE) * CLUSTER_SIZE, 
+                   round(y / CLUSTER_SIZE) * CLUSTER_SIZE)
+            clusters.setdefault(key, []).append((dist, x, y, unk_count))
+
+        # Filter out tiny clusters and compute cluster scores
+        MIN_CLUSTER_SIZE = 3
+        cluster_scores = []
+        
+        for cluster_points in clusters.values():
+            if len(cluster_points) < MIN_CLUSTER_SIZE:
+                continue
+            
+            # Centroid position
+            avg_x = sum(p[1] for p in cluster_points) / len(cluster_points)
+            avg_y = sum(p[2] for p in cluster_points) / len(cluster_points)
+            
+            # Distance from robot
             dist_to_centroid = math.hypot(
                 avg_x - self.robot_pose['x'],
                 avg_y - self.robot_pose['y']
             )
-            result.append((dist_to_centroid, avg_x, avg_y))
+            
+            # Average unknown neighbor count
+            avg_unknown = sum(p[3] for p in cluster_points) / len(cluster_points)
+            
+            # Score: prefer larger clusters with more unknown space, but not too far
+            # Score = size * unknown_factor / distance_factor
+            size_score = len(cluster_points)
+            unknown_score = avg_unknown
+            distance_penalty = max(1.0, dist_to_centroid / 3.0)  # Penalty for distance
+            
+            score = (size_score * unknown_score) / distance_penalty
+            
+            cluster_scores.append((score, dist_to_centroid, avg_x, avg_y, len(cluster_points)))
         
-        # Sort by distance
-        result.sort()
+        if not cluster_scores:
+            self.get_logger().warning(
+                "No valid frontier clusters found",
+                throttle_duration_sec=2.0
+            )
+            return None
         
+        # Sort by score (best first)
+        cluster_scores.sort(reverse=True)
+        
+        # Return top 5 as list of (distance, x, y) for compatibility
+        result = [(c[1], c[2], c[3]) for c in cluster_scores[:5]]
+        
+        best = cluster_scores[0]
         self.get_logger().info(
-            f"Found {len(candidates)} frontier candidates in {len(result)} clusters, "
-            f"closest at ({result[0][1]:.2f}, {result[0][2]:.2f})",
+            f"Found {len(cluster_scores)} frontier clusters\n"
+            f"  Best cluster: ({best[2]:.2f}, {best[3]:.2f})\n"
+            f"    - Score: {best[0]:.2f}\n"
+            f"    - Distance: {best[1]:.2f}m\n"
+            f"    - Size: {best[4]} cells",
             throttle_duration_sec=2.0
         )
         
