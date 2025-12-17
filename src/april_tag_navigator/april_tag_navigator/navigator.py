@@ -623,9 +623,9 @@ class AprilTagNavigator(Node):
         goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
 
         # Check if the starting location is valid (if it is free)
-        if not self.is_free(start_mx, start_my):
-            self.get_logger().warning('Start position is not free')
-            return None
+        # if not self.is_free(start_mx, start_my):
+        #     self.get_logger().warning('Start position is not free')
+        #     return None
         
         # Check if the goal location is valid (if it is free)
         if not self.is_free(goal_mx, goal_my, allow_unknown=allow_unknown):
