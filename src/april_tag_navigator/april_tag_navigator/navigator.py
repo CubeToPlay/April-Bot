@@ -32,6 +32,8 @@ class NavigationState(Enum):
     """Robot sees the goal april tag and is now moving directly towards it (not following the path exactly)"""
     REACHED = 4
     """Robot has reached the april tag and will be waiting for next instruction"""
+    RECOVERY = 5
+    """Robot got too close to an obstacle and has to move away from it"""
 
 class AprilTagNavigator(Node):
     """Uses A* algorithm for path planning to get the robot to move to the given goal id. If it knows where the tag is, it will go directly there, otherwise it will begin searching for the april tag in unexplored locations"""
@@ -48,6 +50,11 @@ class AprilTagNavigator(Node):
         self.declare_parameter('cancel_command', 11)
         self.declare_parameter('min_wall_distance', 0.35)   # meters
         self.declare_parameter('critical_distance', 0.20)  # emergency stop
+        self.declare_parameter('recover_back_speed', 0.3)
+        self.declare_parameter('recovery_back_time', 0.5)
+        self.declare_parameter('recovery_turn_speed', 0.2)
+        
+
         
         self.approach_distance = self.get_parameter('approach_distance').value
         """How close the robot has to be to count the tag as approached"""
@@ -66,6 +73,11 @@ class AprilTagNavigator(Node):
 
         self.min_wall_distance = self.get_parameter('min_wall_distance').value
         self.critical_distance = self.get_parameter('critical_distance').value
+
+        self.recover_back_speed = self.get_parameter('recover_back_speed').value
+        self.recovery_back_time = self.get_parameter('recovery_back_time').value
+        self.recovery_turn_speed = self.get_parameter('recovery_turn_speed').value
+        self.recovery_phase = 0
 
         # TF2 for SLAM localization
         try:
@@ -1203,7 +1215,11 @@ class AprilTagNavigator(Node):
                 )
                 self.current_path = []
                 self.path_index = 0
-                self.frontier_target = None 
+                self.frontier_target = None
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.cmd_vel_pub.publish(twist)
+                return
             elif warning:
                 # Slow down near obstacles
                 speed_factor = (min_distance - self.critical_distance) / \
@@ -1385,6 +1401,38 @@ class AprilTagNavigator(Node):
             self.current_path = []
             self.publish_path(self.current_path)
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
+        elif self.state == NavigationState.RECOVERING:
+            now = self.get_clock().now()
+            elapsed = (now - self.recovery_start_time).nanoseconds * 1e-9
+
+            # Phase 0: back up
+            if self.recovery_phase == 0:
+                twist.linear.x = -self.recover_back_speed
+                twist.angular.z = 0.0
+
+                if elapsed > self.recovery_back_time:
+                    self.recovery_phase = 1
+                    self.recovery_start_time = now
+
+            # Phase 1: turn away
+            elif self.recovery_phase == 1:
+                if self.laser_ranges is not None:
+                    left = np.mean(self.laser_ranges[len(self.laser_ranges)//2:])
+                    right = np.mean(self.laser_ranges[:len(self.laser_ranges)//2])
+                    twist.angular.z = self.recovery_turn_speed if left > right else -self.recovery_turn_speed
+
+                if elapsed > 0.8:
+                    self.recovery_phase = 2
+
+            # Phase 2: done → replan
+            else:
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.state = NavigationState.PLANNING
+                self.get_logger().info('Recovery complete — replanning')
+
+            self.cmd_vel_pub.publish(twist)
+            return
 
         self.cmd_vel_pub.publish(twist)
 
