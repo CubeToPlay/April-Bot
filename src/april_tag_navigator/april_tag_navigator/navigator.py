@@ -1200,7 +1200,7 @@ class AprilTagNavigator(Node):
                 goal_in_bounds = (0 <= goal_mx < self.map_width and 
                                 0 <= goal_my < self.map_height)
                 
-                if goal_in_bounds:
+                if goal_in_bounds or self.is_free(goal_mx, goal_my):
                     # Try direct path to tag
                     self.get_logger().info(f'Planning direct path to tag at ({goal_x:.2f}, {goal_y:.2f})')
                     self.current_path = self.astar_planning(
