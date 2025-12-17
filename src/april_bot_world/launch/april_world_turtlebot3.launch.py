@@ -43,6 +43,24 @@ def generate_launch_description():
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
+            name='base_to_lidar_tf',
+            arguments=['0', '0', '0.13', '0', '0', '0', 'base_link', 'base_scan'],
+            parameters=[{'use_sim_time': use_sim_time}]
+        ),
+        # Static transform: base_footprint -> base_scan
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_footprint_to_base_scan',
+            output='screen',
+            arguments=['--x', '0', '--y', '0', '--z', '0.172', 
+                      '--qx', '0', '--qy', '0', '--qz', '0', '--qw', '1',
+                      '--frame-id', 'base_footprint', '--child-frame-id', 'base_scan'],
+            parameters=[{'use_sim_time': True}]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
             name='camera_rgb_optical_tf',
             arguments=[
                 '0', '0', '0',          # translation
@@ -63,14 +81,6 @@ def generate_launch_description():
                       '--frame-id', 'base_footprint', '--child-frame-id', 'camera_rgb_frame'],
             parameters=[{'use_sim_time': True}]
         ),
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            parameters=[{
-                'use_sim_time': True,
-                'robot_description': Command(['xacro ', urdf_path])
-            }]
-        )
         Node(
             package='april_bot_world',
             executable='odom_to_tf',

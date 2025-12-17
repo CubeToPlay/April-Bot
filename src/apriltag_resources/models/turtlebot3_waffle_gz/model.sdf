@@ -103,7 +103,7 @@
 
 
     <!-- ================= LIDAR ================= -->
-    <link name="laser">
+    <link name="base_scan">
     <!-- Centered on robot, slightly above base -->
     <pose>0 0 0.13 0 0 0</pose>
 
@@ -139,7 +139,7 @@
         <always_on>true</always_on>
         <update_rate>30</update_rate>
         <topic>/scan</topic>
-        <gz_frame_id>laser</gz_frame_id>
+        <gz_frame_id>base_scan</gz_frame_id>
         <visualize>true</visualize>
 
         <lidar>
@@ -296,9 +296,9 @@
       <child>camera_link</child>
     </joint>
 
-    <joint name="laser_joint" type="fixed">
-      <parent>base_link</parent>
-      <child>laser</child>
+    <joint name="base_scan_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>base_scan</child>
     </joint>
 
     <joint name="wheel_left_joint" type="revolute">
