@@ -1276,6 +1276,7 @@ class AprilTagNavigator(Node):
                 if self.target_tag_id in self.discovered_tags:
                     self.state = NavigationState.TRACKING
                 else:
+                    self.start_scan()
                     self.state = NavigationState.SCANNING
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
