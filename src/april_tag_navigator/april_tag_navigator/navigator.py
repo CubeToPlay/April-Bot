@@ -1337,10 +1337,10 @@ class AprilTagNavigator(Node):
         
         elif self.state == NavigationState.TRACKING:
             # If the tag is no longer visible, replan the path to the tag
-            if not self.target_tag_visible:
-                self.state = NavigationState.PLANNING
-                self.cmd_vel_pub.publish(twist)
-                return
+            # if not self.target_tag_visible:
+            #     self.state = NavigationState.PLANNING
+            #     self.cmd_vel_pub.publish(twist)
+            #     return
             angle = math.radians(self.target_tag_angle)
             dist = self.target_tag_distance
 
@@ -1349,10 +1349,13 @@ class AprilTagNavigator(Node):
                 self.cmd_vel_pub.publish(Twist())
                 return
             
-            twist.angular.z = self.angular_speed * angle
+            
+            if abs(angle) < math.radians(2.0):
+                twist.angular.z = 0.0
+            else:
+                twist.angular.z = self.angular_speed * angle
             twist.linear.x = min(self.linear_speed, 0.5 * dist)
 
-            # Safety override ONLY
             critical, warning, min_dist = self.check_obstacle_ahead()
             if critical:
                 twist.linear.x = 0.0
