@@ -17,7 +17,6 @@ from enum import Enum
 import json
 import os
 import heapq
-from collections import deque
 
 from april_tag_msgs.msg import AprilTagDetection, AprilTagDetectionArray
 
@@ -1110,49 +1109,6 @@ class AprilTagNavigator(Node):
     def scan_complete(self):
         return self.total_yaw >= self.scan_target
     
-    def compute_reachable_free_space(self):
-        start = self.world_to_map(
-            self.robot_pose['x'],
-            self.robot_pose['y']
-        )
-
-        visited = set()
-        q = deque([start])
-
-        while q:
-            cx, cy = q.popleft()
-            if (cx, cy) in visited:
-                continue
-            visited.add((cx, cy))
-
-            for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-                nx, ny = cx + dx, cy + dy
-                if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
-                    if self.map_data[ny, nx] < 50 and self.map_data[ny, nx] != -1:
-                        q.append((nx, ny))
-
-        return visited
-    
-    def project_goal_to_reachable(self, goal_wx, goal_wy, reachable):
-        gx, gy = self.world_to_map(goal_wx, goal_wy)
-
-        best_cell = None
-        best_dist = float('inf')
-
-        for (mx, my) in reachable:
-            if self.map_data[my, mx] >= 50:
-                continue
-
-            d = (mx - gx)**2 + (my - gy)**2
-            if d < best_dist:
-                best_dist = d
-                best_cell = (mx, my)
-
-        if best_cell is None:
-            return None
-
-        return self.map_to_world(*best_cell)
-    
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
@@ -1397,23 +1353,6 @@ class AprilTagNavigator(Node):
             # Stand-off goal in front of tag
             goal_x = tag['x'] - ux * self.approach_distance
             goal_y = tag['y'] - uy * self.approach_distance
-            goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
-
-            goal_is_invalid = False
-            reachable = self.compute_reachable_free_space()
-            if self.map_data[goal_my, goal_mx] >= 50 or \
-                (goal_mx, goal_my) not in reachable:
-                    goal_is_invalid = True
-            if goal_is_invalid:
-
-                projected_goal = self.project_goal_to_reachable(
-                    tag['x'], tag['y'], reachable
-                )
-                if projected_goal is None:
-                    self.get_logger().warn("No reachable projection found")
-                    self.state = NavigationState.IDLE
-                    return
-                goal_x, goal_y = projected_goal[0], projected_goal[1]
 
             if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
