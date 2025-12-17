@@ -1346,7 +1346,9 @@ class AprilTagNavigator(Node):
 
             if dist < self.approach_distance:
                 self.state = NavigationState.REACHED
-                self.cmd_vel_pub.publish(Twist())
+                twist.angular.z = 0.0
+                twist.linear.x = 0.0
+                self.cmd_vel_pub.publish(twist)
                 return
             
             
