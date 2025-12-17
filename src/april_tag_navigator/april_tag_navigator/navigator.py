@@ -1397,6 +1397,7 @@ class AprilTagNavigator(Node):
             # Stand-off goal in front of tag
             goal_x = tag['x'] - ux * self.approach_distance
             goal_y = tag['y'] - uy * self.approach_distance
+            goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
 
             goal_is_invalid = False
             if self.map_data[goal_my, goal_mx] >= 50 or \
