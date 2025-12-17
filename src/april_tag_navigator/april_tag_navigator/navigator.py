@@ -600,12 +600,12 @@ class AprilTagNavigator(Node):
                     return False
                 
                 cell_value = self.map_data[cy, cx]
-                
+                if cell_value >= 50:  # obstacle
+                    return False
                 # Treat unknown as free if allowed
                 if allow_unknown and cell_value == -1:
                     continue
-                
-                if cell_value >= 50:  # obstacle
+                else:
                     return False
         
         return True
