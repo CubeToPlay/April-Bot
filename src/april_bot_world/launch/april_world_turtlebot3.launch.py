@@ -64,6 +64,14 @@ def generate_launch_description():
             parameters=[{'use_sim_time': True}]
         ),
         Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            parameters=[{
+                'use_sim_time': True,
+                'robot_description': Command(['xacro ', urdf_path])
+            }]
+        )
+        Node(
             package='april_bot_world',
             executable='odom_to_tf',
             name='odom_to_tf',
