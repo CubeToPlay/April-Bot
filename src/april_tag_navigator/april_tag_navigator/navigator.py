@@ -633,75 +633,66 @@ class AprilTagNavigator(Node):
             goal_mx, goal_my = self.find_nearest_free(goal_mx, goal_my)
             if goal_mx is None:
                 return None
-        if (start_mx, start_my) == (goal_mx, goal_my):
-            return [(start_x, start_y)]
             
         # A* algorithm
-        visited = np.zeros((self.map_height, self.map_width), dtype=bool)
-        g_score = np.full((self.map_height, self.map_width), np.inf)
-        """Actual cost from start to current node"""
-        g_score[start_my, start_mx] = 0
-
         open_set = []
         """Priority queue of nodes to explore, scored by f_score (estimated total cost)"""
         heapq.heappush(open_set, (0, (start_mx, start_my)))
         
         came_from = {}
         """Lists the Parent node for each visited node for path reconstruction"""
-
+        g_score = {(start_mx, start_my): 0}
+        """Actual cost from start to current node"""
+        f_score = {(start_mx, start_my): self.heuristic(start_mx, start_my, goal_mx, goal_my)}
+        """g_score + heuristic"""
+        
+        visited = set()
+        
         max_distance = math.hypot(goal_mx - start_mx, goal_my - start_my) * 1.5
-        
-        moves = [
-            (-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0),  # Cardinal
-            (-1, -1, 1.414), (-1, 1, 1.414), (1, -1, 1.414), (1, 1, 1.414)  # Diagonal
-        ]
-        iterations = 0
-        max_iterations = 50000
-        
-        while open_set and iterations < max_iterations:
-            iterations += 1
+
+        while open_set:
             # Get the node with the lowest f_score
             _, current = heapq.heappop(open_set)
-            cx, cy = current
             
             # Skip the node if it has been visited already
-            if visited[cx, cy]:
+            if current in visited:
                 continue
             
-            visited[cx, cy] = True
+            visited.add(current)
             self.publish_path(self.reconstruct_path(came_from, current), True)
-
+            cx, cy = current
+            if math.hypot(cx - start_mx, cy - start_my) > max_distance:
+                continue
             # If the goal is reached, reconstruct the path in order for the robot to actually be able to make it to the goal location
             if current == (goal_mx, goal_my):
                 return self.reconstruct_path(came_from, current)
-            if math.hypot(cx - start_mx, cy - start_my) > max_distance:
-                continue
-            current_g = g_score[cy, cx]
-
+            
             # Check the neighbors of the current cell to see if they are free (8-connected - Robot can move horizontally, vertically, or diagonally)
-            for dx, dy, move_cost in moves:
-                nx, ny = cx + dx, cy + dy
-                if visited[ny, nx]:
-                    continue
-
+            for dx, dy in [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1), (1,-1), (1,1)]:
                 neighbor = (current[0] + dx, current[1] + dy)
                 
                 # Path planning will skip neighbors with obstacles or neighbors that have been visited already
                 if not self.is_free(neighbor[0], neighbor[1], radius=ROBOT_RADIUS, allow_unknown=allow_unknown):
                     continue
                 
+                if neighbor in visited:
+                    continue
+                
+                move_cost = math.sqrt(dx**2 + dy**2)
                 """
                 Horizontal/Vertical cost: 1.0
                 Diagonal cost: = sqrt{2} about 1.414
                 """
                 tentative_g = g_score[current] + move_cost
-
-                if tentative_g < g_score[ny, nx]:
-                    came_from[(nx, ny)] = current
-                    g_score[ny, nx] = tentative_g
-                    h = self.heuristic(nx, ny, goal_mx, goal_my)
-                    f = tentative_g + h
-                    heapq.heappush(open_set, (f, (nx, ny)))
+                
+                # If a better path was found for the neighbor, update the scores and add it to the open_set
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g
+                    f_score[neighbor] = tentative_g + self.heuristic(
+                        neighbor[0], neighbor[1], goal_mx, goal_my
+                    )
+                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
         
         # If open_set is empty without reaching the goal, it means that a path from the starting location to the goal location does not exist
         self.get_logger().warning('No path found!')
@@ -712,9 +703,7 @@ class AprilTagNavigator(Node):
         """Euclidean distance heuristic
         Admissible heuristic - It will never overestimate the actual distance, which guarantees that A* finds the optimal path (if a path exists)
         """
-        dx = abs(x1 - x2)
-        dy = abs(y1 - y2)
-        return max(dx, dy) + 0.414 * min(dx, dy)
+        return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
     
     def reconstruct_path(self, came_from, current):
         """Reconstruct path from A* result"""
