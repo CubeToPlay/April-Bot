@@ -1339,14 +1339,14 @@ class AprilTagNavigator(Node):
             # If the tag is no longer visible, replan the path to the tag
             if not self.target_tag_visible:
                 self.state = NavigationState.PLANNING
-                self.cmd_vel_pub(twist)
+                self.cmd_vel_pub.publish(twist)
                 return
             angle = math.radians(self.target_tag_angle)
             dist = self.target_tag_distance
 
             if dist < self.approach_distance:
                 self.state = NavigationState.REACHED
-                self.cmd_vel_pub(Twist())
+                self.cmd_vel_pub.publish(Twist())
                 return
             
             twist.angular.z = self.angular_speed * angle
