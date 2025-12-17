@@ -1400,11 +1400,11 @@ class AprilTagNavigator(Node):
             goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
 
             goal_is_invalid = False
+            reachable = self.compute_reachable_free_space()
             if self.map_data[goal_my, goal_mx] >= 50 or \
                 (goal_mx, goal_my) not in reachable:
                     goal_is_invalid = True
             if goal_is_invalid:
-                reachable = self.compute_reachable_free_space()
 
                 projected_goal = self.project_goal_to_reachable(
                     goal_x, goal_y, reachable
