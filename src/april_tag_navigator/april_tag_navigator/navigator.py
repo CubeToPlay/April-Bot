@@ -836,7 +836,7 @@ class AprilTagNavigator(Node):
         cluster_scores.sort(reverse=True)
         
         # Return top 5 as list of (distance, x, y) for compatibility
-        result = [(c[1], c[2], c[3]) for c in cluster_scores[:5]]
+        result = [(c[1], c[2], c[3]) for c in cluster_scores]
         
         best = cluster_scores[0]
         self.get_logger().info(
