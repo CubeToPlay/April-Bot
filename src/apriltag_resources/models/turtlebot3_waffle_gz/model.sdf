@@ -46,68 +46,6 @@
           </box>
         </geometry>
       </visual>
-      <sensor name="imu_sensor" type="imu">
-        <always_on>true</always_on>
-        <update_rate>100</update_rate>
-        <topic>/imu</topic>
-        <gz_frame_id>imu_link</gz_frame_id>
-        <visualize>false</visualize>
-        
-        <imu>
-          <angular_velocity>
-            <x>
-              <noise type="gaussian">
-                <mean>0.0</mean>
-                <stddev>0.0002</stddev>
-                <bias_mean>0.00001</bias_mean>
-                <bias_stddev>0.000001</bias_stddev>
-              </noise>
-            </x>
-            <y>
-              <noise type="gaussian">
-                <mean>0.0</mean>
-                <stddev>0.0002</stddev>
-                <bias_mean>0.00001</bias_mean>
-                <bias_stddev>0.000001</bias_stddev>
-              </noise>
-            </y>
-            <z>
-              <noise type="gaussian">
-                <mean>0.0</mean>
-                <stddev>0.0002</stddev>
-                <bias_mean>0.00001</bias_mean>
-                <bias_stddev>0.000001</bias_stddev>
-              </noise>
-            </z>
-          </angular_velocity>
-          <linear_acceleration>
-            <x>
-              <noise type="gaussian">
-                <mean>0.0</mean>
-                <stddev>0.017</stddev>
-                <bias_mean>0.1</bias_mean>
-                <bias_stddev>0.001</bias_stddev>
-              </noise>
-            </x>
-            <y>
-              <noise type="gaussian">
-                <mean>0.0</mean>
-                <stddev>0.017</stddev>
-                <bias_mean>0.1</bias_mean>
-                <bias_stddev>0.001</bias_stddev>
-              </noise>
-            </y>
-            <z>
-              <noise type="gaussian">
-                <mean>0.0</mean>
-                <stddev>0.017</stddev>
-                <bias_mean>0.1</bias_mean>
-                <bias_stddev>0.001</bias_stddev>
-              </noise>
-            </z>
-          </linear_acceleration>
-        </imu>
-      </sensor>
     </link>
 
     <!-- ================= CAMERA ================= -->
@@ -351,39 +289,11 @@
       </visual>
     </link>
 
-    <!-- ================= IMU LINK ================= -->
-    <link name="imu_link">
-      <!-- IMU centered on robot, inside the body -->
-      <pose>0 0 0.068 0 0 0</pose>
-      
-      <inertial>
-        <mass>0.001</mass>
-        <inertia>
-          <ixx>0.000001</ixx>
-          <iyy>0.000001</iyy>
-          <izz>0.000001</izz>
-        </inertia>
-      </inertial>
-      
-      <visual name="imu_visual">
-        <geometry>
-          <box>
-            <size>0.01 0.01 0.01</size>
-          </box>
-        </geometry>
-      </visual>
-    </link>
-
     <!-- ================= JOINTS ================= -->
 
     <joint name="camera_joint" type="fixed">
       <parent>base_link</parent>
       <child>camera_link</child>
-    </joint>
-
-    <joint name="imu_joint" type="fixed">
-      <parent>base_link</parent>
-      <child>imu_link</child>
     </joint>
 
     <joint name="base_scan_joint" type="fixed">

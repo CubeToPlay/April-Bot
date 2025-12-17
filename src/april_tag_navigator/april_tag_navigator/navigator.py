@@ -10,6 +10,7 @@ from slam_toolbox.srv import SerializePoseGraph
 from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.time import Time
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
 import numpy as np
 import math
 from enum import Enum
@@ -1392,7 +1393,9 @@ def main(args=None):
     rclpy.init(args=args)
     navigator = AprilTagNavigator()
     try:
-        rclpy.spin(navigator)
+        executor = MultiThreadedExecutor(num_threads=4)
+        executor.add_node(navigator)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:

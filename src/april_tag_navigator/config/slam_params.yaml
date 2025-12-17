@@ -13,6 +13,10 @@ slam_toolbox:
     
     # Mode
     mode: mapping
+
+    qos_overrides:
+      /scan:
+        reliability: best_effort
     
     # CRITICAL: Transform settings
     transform_publish_period: 0.02
@@ -57,6 +61,3 @@ slam_toolbox:
     minimum_angle_penalty: 0.9
     minimum_distance_penalty: 0.5
     use_response_expansion: true
-
-    use_imu: true
-    imu_topic: /imu/data
