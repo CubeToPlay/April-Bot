@@ -648,7 +648,6 @@ class AprilTagNavigator(Node):
         
         visited = set()
         
-        max_distance = math.hypot(goal_mx - start_mx, goal_my - start_my) * 1.5
 
         while open_set:
             # Get the node with the lowest f_score
@@ -661,8 +660,7 @@ class AprilTagNavigator(Node):
             visited.add(current)
             self.publish_path(self.reconstruct_path(came_from, current), True)
             cx, cy = current
-            if math.hypot(cx - start_mx, cy - start_my) > max_distance:
-                continue
+            
             # If the goal is reached, reconstruct the path in order for the robot to actually be able to make it to the goal location
             if current == (goal_mx, goal_my):
                 return self.reconstruct_path(came_from, current)
