@@ -1349,7 +1349,7 @@ class AprilTagNavigator(Node):
             angle = math.radians(self.target_tag_angle)
             dist = self.target_tag_distance
 
-            if dist < self.approach_distance:
+            if dist < self.approach_distance or not self.target_tag_visible:
                 self.state = NavigationState.REACHED
                 twist.angular.z = 0.0
                 twist.linear.x = 0.0
