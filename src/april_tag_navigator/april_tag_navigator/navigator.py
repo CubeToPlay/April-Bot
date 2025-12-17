@@ -600,12 +600,12 @@ class AprilTagNavigator(Node):
                     return False
                 
                 cell_value = self.map_data[cy, cx]
-                if cell_value >= 50:  # obstacle
-                    return False
+                
                 # Treat unknown as free if allowed
                 if allow_unknown and cell_value == -1:
                     continue
-                else:
+                
+                if cell_value >= 50:  # obstacle
                     return False
         
         return True
@@ -623,9 +623,9 @@ class AprilTagNavigator(Node):
         goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
 
         # Check if the starting location is valid (if it is free)
-        # if not self.is_free(start_mx, start_my):
-        #     self.get_logger().warning('Start position is not free')
-        #     return None
+        if not self.is_free(start_mx, start_my):
+            self.get_logger().warning('Start position is not free')
+            return None
         
         # Check if the goal location is valid (if it is free)
         if not self.is_free(goal_mx, goal_my, allow_unknown=allow_unknown):
@@ -1200,7 +1200,7 @@ class AprilTagNavigator(Node):
                 goal_in_bounds = (0 <= goal_mx < self.map_width and 
                                 0 <= goal_my < self.map_height)
                 
-                if goal_in_bounds or self.is_free(goal_mx, goal_my):
+                if goal_in_bounds and self.is_free(goal_mx, goal_my):
                     # Try direct path to tag
                     self.get_logger().info(f'Planning direct path to tag at ({goal_x:.2f}, {goal_y:.2f})')
                     self.current_path = self.astar_planning(
@@ -1220,7 +1220,7 @@ class AprilTagNavigator(Node):
                         self.get_logger().warning('Direct path to tag blocked')
                 else:
                     self.get_logger().warning(
-                        f'Tag goal ({goal_x:.2f}, {goal_y:.2f}) is out of bounds, '
+                        f'Unable to go directly to Tag goal ({goal_x:.2f}, {goal_y:.2f})'
                         f'using guided exploration'
                     )
                 
