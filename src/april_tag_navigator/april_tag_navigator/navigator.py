@@ -609,7 +609,7 @@ class AprilTagNavigator(Node):
         
         return True
 
-    def astar_planning(self, start_x, start_y, goal_x, goal_y, allow_unknown=False):
+    def astar_planning(self, start_x, start_y, goal_x, goal_y, allow_unknown=False, check_goal=True):
         """A* path planning algorithm"""
         if self.map_data is None:
             self.get_logger().warning('No map available for planning')
@@ -627,7 +627,7 @@ class AprilTagNavigator(Node):
             return None
         
         # Check if the goal location is valid (if it is free)
-        if not self.is_free(goal_mx, goal_my, allow_unknown=allow_unknown):
+        if not self.is_free(goal_mx, goal_my, allow_unknown=allow_unknown) and check_goal:
             self.get_logger().warning('Goal position is not free')
             # If the goal postiion is not free, it will find the nearest free cell
             goal_mx, goal_my = self.find_nearest_free(goal_mx, goal_my)
@@ -1353,16 +1353,11 @@ class AprilTagNavigator(Node):
             # Stand-off goal in front of tag
             goal_x = tag['x'] - ux * self.approach_distance
             goal_y = tag['y'] - uy * self.approach_distance
-            goal_mx, goal_my = self.world_to_map(goal_x, goal_y)
-            if not self.is_free(goal_mx, goal_my, allow_unknown=True):
-                self.get_logger().info(f"Goal ({goal_x}, {goal_y}) not free. Getting further in front of it.")
-                goal_x -= ux * self.approach_distance 
-                goal_y -= uy * self.approach_distance
 
             if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
                     self.robot_pose['x'], self.robot_pose['y'],
-                    goal_x, goal_y
+                    goal_x, goal_y, check_goal=False
                 )
 
                 if self.current_path:
@@ -1392,7 +1387,6 @@ class AprilTagNavigator(Node):
                 )
                 self.current_path = []
                 self.path_index = 0
-                self.frontier_target = None 
             elif warning:
                 # Slow down near obstacles
                 speed_factor = (min_distance - self.critical_distance) / \
