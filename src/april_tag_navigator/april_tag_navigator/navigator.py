@@ -639,6 +639,7 @@ class AprilTagNavigator(Node):
         # A* algorithm
         visited = np.zeros((self.map_height, self.map_width), dtype=bool)
         g_score = np.full((self.map_height, self.map_width), np.inf)
+        """Actual cost from start to current node"""
         g_score[start_my, start_mx] = 0
 
         open_set = []
@@ -647,10 +648,6 @@ class AprilTagNavigator(Node):
         
         came_from = {}
         """Lists the Parent node for each visited node for path reconstruction"""
-        g_score = {(start_mx, start_my): 0}
-        """Actual cost from start to current node"""
-        f_score = {(start_mx, start_my): self.heuristic(start_mx, start_my, goal_mx, goal_my)}
-        """g_score + heuristic"""
 
         max_distance = math.hypot(goal_mx - start_mx, goal_my - start_my) * 1.5
         
@@ -660,7 +657,6 @@ class AprilTagNavigator(Node):
         ]
         iterations = 0
         max_iterations = 50000
-        visited = set()
         
         while open_set and iterations < max_iterations:
             iterations += 1
