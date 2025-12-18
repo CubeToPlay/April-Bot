@@ -1344,8 +1344,8 @@ class AprilTagNavigator(Node):
             return tag_x, tag_y
 
         # Robot world position
-        robot_x = self.robot_pose.position.x
-        robot_y = self.robot_pose.position.y
+        robot_x = self.robot_pose['x']
+        robot_y = self.robot_pose['y']
 
         # Vector from tag to robot
         dx = robot_x - tag_x
