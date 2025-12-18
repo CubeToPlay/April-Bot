@@ -24,7 +24,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'use_sim_time': use_sim_time,
-            'approach_distance': 0.5,
+            'approach_distance': 0.35,
             'linear_speed': 0.5,
             'angular_speed': 0.5,
             'waypoint_tolerance': 0.3,

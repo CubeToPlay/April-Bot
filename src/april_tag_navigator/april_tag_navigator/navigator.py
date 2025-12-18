@@ -950,7 +950,7 @@ class AprilTagNavigator(Node):
             norm_unknown = avg_unknown
             distance_penalty = 1.0 + (DIST_WEIGHT * norm_dist) ** 2
             score = (SIZE_WEIGHT * norm_size + UNKNOWN_WEIGHT * norm_unknown) / distance_penalty
-            
+
             cluster_scores.append((score, dist_to_centroid, avg_x, avg_y, len(cluster_points)))
         
         if not cluster_scores:
