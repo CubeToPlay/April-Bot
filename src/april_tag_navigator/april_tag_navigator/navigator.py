@@ -580,9 +580,7 @@ class AprilTagNavigator(Node):
             )
                 tag_x = transform.transform.translation.x  # Actual 3D position
                 tag_y = transform.transform.translation.y
-                projected = self.project_tag_to_free_space(tag_x, tag_y, self.robot_pose['x'], self.robot_pose['y'])
-                if projected:
-                    tag_x, tag_y = projected
+                tag_x, tag_y = self.adjust_tag_position(tag_x, tag_y, self.map_data, self.world_to_map)
                 if tag_id not in self.discovered_tags:
                     self.discovered_tags[tag_id] = {
                         'x': tag_x,
@@ -1331,6 +1329,30 @@ class AprilTagNavigator(Node):
 
         return self.map_to_world(*best_cell)
     
+    def adjust_tag_position(self, tag_x, tag_y, map_data, world_to_map, max_offset=1.0, step=0.05):
+        """
+        Move tag away from obstacles until it is in free space.
+        """
+        mx, my = world_to_map(tag_x, tag_y)
+        
+        # If already free, no adjustment needed
+        if map_data[my, mx] < 50 and map_data[my, mx] >= 0:
+            return tag_x, tag_y
+        
+        # Compute direction to push tag: toward robot or along negative gradient
+        # Here we just try moving backward along Y (or could use robot → tag vector)
+        # Try multiple small steps until free space is found
+        for i in range(int(max_offset / step)):
+            # Move opposite to gradient (simple: move back along Y)
+            tag_y -= step
+            mx, my = world_to_map(tag_x, tag_y)
+            if 0 <= mx < map_data.shape[1] and 0 <= my < map_data.shape[0]:
+                if map_data[my, mx] < 50 and map_data[my, mx] >= 0:
+                    return tag_x, tag_y
+        
+        # If no free space found, return original (may be in wall)
+        return tag_x, tag_y
+    
     def navigation_loop(self):
         """Main control loop"""
         twist = Twist()
@@ -1616,7 +1638,7 @@ class AprilTagNavigator(Node):
                     goal_x - self.tracked_goal[0],
                     goal_y - self.tracked_goal[1]
                 )
-                REPLAN_THRESHOLD = 0.5  # Replan if goal moves more than 0.5m
+                REPLAN_THRESHOLD = 0.2  # Replan if goal moves more than 0.2m
     
                 if goal_moved_distance > REPLAN_THRESHOLD:
                     self.get_logger().info(
