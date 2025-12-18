@@ -1112,6 +1112,8 @@ class AprilTagNavigator(Node):
 
         candidates = []
         MAX_RADIUS = int(10.0 / self.map_resolution)
+        MIN_WALL_CLEARANCE = 0.6
+        CLEARANCE_CELLS = int(MIN_WALL_CLEARANCE / self.map_resolution)
 
         for dy in range(-MAX_RADIUS, MAX_RADIUS):
             for dx in range(-MAX_RADIUS, MAX_RADIUS):
@@ -1181,6 +1183,9 @@ class AprilTagNavigator(Node):
             # Centroid position
             avg_x = sum(p[2] for p in cluster_points) / len(cluster_points)
             avg_y = sum(p[3] for p in cluster_points) / len(cluster_points)
+            avg_mx, avg_my = self.world_to_map(avg_x, avg_y)
+            if not self.is_far_from_obstacles(avg_mx, avg_my, CLEARANCE_CELLS):
+                continue
             
             # Average distances
             avg_dist_robot = sum(p[0] for p in cluster_points) / len(cluster_points)
