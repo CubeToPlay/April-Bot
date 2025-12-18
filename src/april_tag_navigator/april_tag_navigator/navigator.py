@@ -469,12 +469,7 @@ class AprilTagNavigator(Node):
             text_marker.color.g = 1.0
             text_marker.color.b = 1.0
             text_marker.color.a = 1.0
-            
-            if active_index is not None and i == active_index:
-                text_marker.text = f"Frontier {i+1} (ACTIVE)\n{dist:.1f}m"
-            else:
-                text_marker.text = f"Frontier {i+1}\n{dist:.1f}m"
-            
+            text_marker.text = f"{i+1}"
             marker_array.markers.append(sphere_marker)
             marker_array.markers.append(text_marker)
         
