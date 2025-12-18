@@ -185,6 +185,8 @@ class AprilTagNavigator(Node):
         """Array of distance measurements from LiDAR"""
         self.laser_msg = None
 
+        self.tracked_goal = None
+
         # Timers
         self.map_wait_timer = self.create_timer(1.0, self.wait_for_map_timer)
         """Wait for /map to begin publishing"""
@@ -395,6 +397,9 @@ class AprilTagNavigator(Node):
         # If cancel command is given, the robot should become idle.
         if self.target_tag_id == self.cancel_command:
             self.state = NavigationState.IDLE
+            self.tracked_goal = None
+            self.current_path = []
+            self.recovery_phase = 0
         elif self.target_tag_id in self.discovered_tags:
             self.get_logger().info(f'Planning path to KNOWN tag {self.target_tag_id}')
         else:
@@ -1418,6 +1423,22 @@ class AprilTagNavigator(Node):
             goal_x, goal_y = self.project_goal_to_reachable(
                 raw_goal_x, raw_goal_y, reachable
             )
+            if self.tracked_goal is None:
+                self.tracked_goal = (goal_x, goal_y)
+            else:
+                goal_moved_distance = math.hypot(
+                    goal_x - self.tracking_goal[0],
+                    goal_y - self.tracking_goal[1]
+                )
+                REPLAN_THRESHOLD = 0.5  # Replan if goal moves more than 0.5m
+    
+                if goal_moved_distance > REPLAN_THRESHOLD:
+                    self.get_logger().info(
+                        f'Tag moved {goal_moved_distance:.2f}m - replanning path'
+                    )
+                    self.current_path = []
+                    self.path_index = 0
+                    self.tracking_goal = (goal_x, goal_y)
 
             if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
@@ -1430,6 +1451,7 @@ class AprilTagNavigator(Node):
                     self.path_index = 0
                     self.publish_path(self.current_path)
                     self.get_logger().info(f'Path planned to tag: {len(self.current_path)} waypoints')
+            
             nav_info = self.follow_path()
             if nav_info is None:
                 self.state = NavigationState.REACHED
@@ -1439,6 +1461,7 @@ class AprilTagNavigator(Node):
                 self.cmd_vel_pub.publish(twist)
                 self.target_tag_visible = False
                 self.target_tag_id = 11
+                self.tracked_goal = None
                 return
             
             distance, angle_diff = nav_info
@@ -1497,6 +1520,7 @@ class AprilTagNavigator(Node):
             self.target_tag_visible = False
             self.target_tag_id = 11
             self.current_path = []
+            self.tracked_goal = None
             self.publish_path(self.current_path)
             self.get_logger().info('Mission complete!', throttle_duration_sec=3.0)
         elif self.state == NavigationState.RECOVERY:
