@@ -509,6 +509,36 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
 
 
+    def project_tag_to_free_space(self, tag_x, tag_y, robot_x, robot_y,
+                              step=0.05, max_backoff=1.5):
+        """
+        Walk from tag toward robot until a free map cell is found.
+        Returns (x, y) or None.
+        """
+        dx = robot_x - tag_x
+        dy = robot_y - tag_y
+        dist = math.hypot(dx, dy)
+
+        if dist < 1e-3:
+            return None
+
+        ux, uy = dx / dist, dy / dist
+
+        backoff = 0.0
+        while backoff <= max_backoff:
+            px = tag_x + ux * backoff
+            py = tag_y + uy * backoff
+
+            mx, my = self.world_to_map(px, py)
+            if (0 <= mx < self.map_width and
+                0 <= my < self.map_height and
+                self.is_free(mx, my)):
+                return px, py
+
+            backoff += step
+
+        return None
+    
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
 
@@ -549,6 +579,9 @@ class AprilTagNavigator(Node):
             )
                 tag_x = transform.transform.translation.x  # Actual 3D position
                 tag_y = transform.transform.translation.y
+                projected = self.project_tag_to_free_space(tag_x, tag_y, self.robot_pose['x'], self.robot_pose['y'])
+                if projected:
+                    tag_x, tag_y = projected
                 if tag_id not in self.discovered_tags:
                     self.discovered_tags[tag_id] = {
                         'x': tag_x,
