@@ -404,6 +404,15 @@ class AprilTagNavigator(Node):
             frontiers: List of (distance, x, y) tuples
             active_index: Index of frontier being navigated to (highlighted differently)
         """
+
+        # ALWAYS clear previous markers
+        delete_marker = Marker()
+        delete_marker.header.frame_id = "map"
+        delete_marker.header.stamp = self.get_clock().now().to_msg()
+        delete_marker.ns = "frontiers"
+        delete_marker.action = Marker.DELETEALL
+        marker_array.markers.append(delete_marker)
+        
         if not frontiers:
             # Clear all frontier markers
             marker_array = MarkerArray()
