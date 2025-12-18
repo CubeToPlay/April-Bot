@@ -616,7 +616,13 @@ class AprilTagNavigator(Node):
             self.get_logger().warning('No map available for planning')
             return None
         
-        ROBOT_RADIUS = int(0.25 / self.map_resolution)
+        # Use smaller radius for exploration goals
+        if allow_unknown:
+            ROBOT_RADIUS = int(0.10 / self.map_resolution)  # Smaller: ~2 cells
+            GOAL_RADIUS = 0  # Don't check radius at goal for frontiers
+        else:
+            ROBOT_RADIUS = int(0.25 / self.map_resolution)
+            GOAL_RADIUS = ROBOT_RADIUS
         
         # Convert the start and goal locations to map coordinates
         start_mx, start_my = self.world_to_map(start_x, start_y)
@@ -628,7 +634,7 @@ class AprilTagNavigator(Node):
             return None
         
         # Check if the goal location is valid (if it is free)
-        if not self.is_free(goal_mx, goal_my, allow_unknown=allow_unknown):
+        if not self.is_free(goal_mx, goal_my, GOAL_RADIUS, allow_unknown=allow_unknown):
             self.get_logger().warning('Goal position is not free')
             # If the goal postiion is not free, it will find the nearest free cell
             goal_mx, goal_my = self.find_nearest_free(goal_mx, goal_my)
@@ -990,10 +996,7 @@ class AprilTagNavigator(Node):
                 if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
                     continue
 
-                if self.map_data[my, mx] >= 50:
-                    continue
-                
-                if self.map_data[my, mx] == -1:
+                if self.map_data[my, mx] < 0 or self.map_data[my, mx] >= 50:
                     continue
 
                 # Check if this cell is adjacent to unknown space
@@ -1005,6 +1008,20 @@ class AprilTagNavigator(Node):
                             break
                 
                 if not has_unknown_neighbor:
+                    continue
+
+                min_clearance = float('inf')
+                for check_r in range(1, 4):  # Check 3 cells around
+                    for cdx in range(-check_r, check_r+1):
+                        for cdy in range(-check_r, check_r+1):
+                            cx, cy = mx + cdx, my + cdy
+                            if 0 <= cx < self.map_width and 0 <= cy < self.map_height:
+                                if self.map_data[cy, cx] >= 50:  # Obstacle
+                                    dist = math.hypot(cdx, cdy)
+                                    min_clearance = min(min_clearance, dist)
+                
+                # Skip frontiers too close to walls
+                if min_clearance < 2.0:  # At least 2 cells clearance
                     continue
 
                 wx, wy = self.map_to_world(mx, my)
