@@ -1345,6 +1345,8 @@ class AprilTagNavigator(Node):
                 else:
                     self.start_scan()
                     self.state = NavigationState.SCANNING
+                    self.current_path = []
+                    self.publish_path(self.current_path)
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
