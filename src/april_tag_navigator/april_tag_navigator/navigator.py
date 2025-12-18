@@ -835,6 +835,15 @@ class AprilTagNavigator(Node):
         
         return world_path
     
+    def is_far_from_obstacles(self, mx, my, radius_cells):
+        for dy in range(-radius_cells, radius_cells + 1):
+            for dx in range(-radius_cells, radius_cells + 1):
+                nx, ny = mx + dx, my + dy
+                if 0 <= nx < self.map_width and 0 <= ny < self.map_height:
+                    if self.map_data[ny, nx] >= 50:
+                        return False
+        return True
+    
     def find_nearest_free(self, mx, my, radius=20):
         """Find nearest free cell"""
 
@@ -857,6 +866,8 @@ class AprilTagNavigator(Node):
         candidates = []
         MAX_RADIUS = int(15.0 / self.map_resolution)  # Increased search radius
         MIN_DIST = 0.8  # Minimum distance from robot
+        MIN_WALL_CLEARANCE = 0.4
+        CLEARANCE_CELLS = int(MIN_WALL_CLEARANCE / self.map_resolution)
 
         for dy in range(-MAX_RADIUS, MAX_RADIUS):
             for dx in range(-MAX_RADIUS, MAX_RADIUS):
@@ -865,6 +876,8 @@ class AprilTagNavigator(Node):
 
                 # Check bounds
                 if not (0 <= mx < self.map_width and 0 <= my < self.map_height):
+                    continue
+                if not self.is_far_from_obstacles(mx, my, CLEARANCE_CELLS):
                     continue
 
                 # MUST be free space (0-49)
