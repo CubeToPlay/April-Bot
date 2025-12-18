@@ -1331,26 +1331,45 @@ class AprilTagNavigator(Node):
     
     def adjust_tag_position(self, tag_x, tag_y, map_data, world_to_map, max_offset=1.0, step=0.05):
         """
-        Move tag away from obstacles until it is in free space.
+        Move tag toward the robot until it is in free space.
         """
+        if self.robot_pose is None:
+            return tag_x, tag_y
+
+        # Map coordinates of tag
         mx, my = world_to_map(tag_x, tag_y)
         
         # If already free, no adjustment needed
         if map_data[my, mx] < 50 and map_data[my, mx] >= 0:
             return tag_x, tag_y
-        
-        # Compute direction to push tag: toward robot or along negative gradient
-        # Here we just try moving backward along Y (or could use robot → tag vector)
-        # Try multiple small steps until free space is found
+
+        # Robot world position
+        robot_x = self.robot_pose.position.x
+        robot_y = self.robot_pose.position.y
+
+        # Vector from tag to robot
+        dx = robot_x - tag_x
+        dy = robot_y - tag_y
+        distance = (dx**2 + dy**2) ** 0.5
+
+        # Avoid division by zero
+        if distance == 0:
+            return tag_x, tag_y
+
+        # Normalize
+        dx /= distance
+        dy /= distance
+
+        # Move toward robot in small steps
         for i in range(int(max_offset / step)):
-            # Move opposite to gradient (simple: move back along Y)
-            tag_y -= step
+            tag_x += dx * step
+            tag_y += dy * step
             mx, my = world_to_map(tag_x, tag_y)
             if 0 <= mx < map_data.shape[1] and 0 <= my < map_data.shape[0]:
                 if map_data[my, mx] < 50 and map_data[my, mx] >= 0:
                     return tag_x, tag_y
-        
-        # If no free space found, return original (may be in wall)
+
+        # If no free space found, return original
         return tag_x, tag_y
     
     def navigation_loop(self):
