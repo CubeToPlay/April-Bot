@@ -1,15 +1,3 @@
-#!/usr/bin/env python3
-
-"""
-HSV Color Tuner Tool
-
-This script helps you find the optimal HSV ranges for your target color.
-It subscribes to a camera topic and provides interactive sliders to adjust HSV values.
-
-Usage:
-    ros2 run your_package_name hsv_tuner.py
-"""
-
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -22,7 +10,7 @@ import yaml
 import os
 
 class VideoView(Node):
-    """Interactive HSV color range tuning tool."""
+    """Video viewer to see through the robot's camera and to see if the robot sees an AprilTag"""
     
     def __init__(self):
         super().__init__('video_viewer')

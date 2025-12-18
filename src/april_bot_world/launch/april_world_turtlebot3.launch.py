@@ -49,15 +49,6 @@ def generate_launch_description():
             }],
             output='screen'
         ),
-        Node(
-            package='april_bot_world',
-            executable='scan_inf_fixer',
-            name='scan_inf_fixer',
-            parameters=[{
-                'use_sim_time': True,
-            }],
-            output='screen'
-        ),
         # Bridging and remapping Gazebo topics to ROS 2
         Node(
             package='ros_gz_bridge',
