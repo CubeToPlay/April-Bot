@@ -623,11 +623,10 @@ class AprilTagNavigator(Node):
             return None
         
         # Use smaller radius for exploration goals
+        ROBOT_RADIUS = int(0.25 / self.map_resolution)
         if allow_unknown:
-            ROBOT_RADIUS = int(0.10 / self.map_resolution)  # Smaller: ~2 cells
             GOAL_RADIUS = 0  # Don't check radius at goal for frontiers
         else:
-            ROBOT_RADIUS = int(0.25 / self.map_resolution)
             GOAL_RADIUS = ROBOT_RADIUS
         
         # Convert the start and goal locations to map coordinates
