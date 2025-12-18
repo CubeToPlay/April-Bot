@@ -593,7 +593,7 @@ class AprilTagNavigator(Node):
                     )
                 else:
                     # Smooth update using moving average
-                    alpha = 0.3
+                    alpha = 0.1
                     old = self.discovered_tags[tag_id]
                     self.discovered_tags[tag_id] = {
                         'x': alpha * tag_x + (1 - alpha) * old['x'],
