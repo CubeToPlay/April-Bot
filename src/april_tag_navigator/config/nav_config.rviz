@@ -190,6 +190,19 @@ Visualization Manager:
         TF: true
         Value: true
       Zoom Factor: 1
+      
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Frontier Markers
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /frontier_markers
+      Value: true
 
   Enabled: true
   Global Options:

@@ -89,6 +89,11 @@ class AprilTagNavigator(Node):
         self.scan_target = 2 * math.pi
         self.scan_speed = 0.8
 
+        # Frontier tracking
+        self.frontier_target = None
+        self.current_frontiers = [] 
+        self.active_frontier_index = None
+
         # TF2 for SLAM localization
         try:
             use_sim = self.get_parameter('use_sim_time').value
@@ -138,6 +143,7 @@ class AprilTagNavigator(Node):
         self.reach_goal_pub = self.create_publisher(Bool, '/reach_goal', 10)
         """Publishes boolean if the robot has reached the given goal"""
         self.marker_pub = self.create_publisher(MarkerArray, '/apriltag_markers', 10)
+        self.frontier_marker_pub = self.create_publisher(MarkerArray, '/frontier_markers', 10)
 
         # State
         self.state = NavigationState.IDLE
@@ -389,11 +395,105 @@ class AprilTagNavigator(Node):
         warning = min_dist < self.min_wall_distance
 
         return critical, warning, min_dist
+    
+    def publish_frontier_markers(self, frontiers, active_index=None):
+        """
+        Publish visualization markers for frontier centroids
+        
+        Args:
+            frontiers: List of (distance, x, y) tuples
+            active_index: Index of frontier being navigated to (highlighted differently)
+        """
+        if not frontiers:
+            # Clear all frontier markers
+            marker_array = MarkerArray()
+            delete_marker = Marker()
+            delete_marker.header.frame_id = "map"
+            delete_marker.header.stamp = self.get_clock().now().to_msg()
+            delete_marker.ns = "frontiers"
+            delete_marker.action = Marker.DELETEALL
+            marker_array.markers.append(delete_marker)
+            self.frontier_marker_pub.publish(marker_array)
+            return
+        
+        marker_array = MarkerArray()
+        
+        for i, frontier in enumerate(frontiers):
+            dist, x, y = frontier
+            
+            # Create sphere marker for frontier centroid
+            sphere_marker = Marker()
+            sphere_marker.header.frame_id = "map"
+            sphere_marker.header.stamp = self.get_clock().now().to_msg()
+            sphere_marker.ns = "frontiers"
+            sphere_marker.id = i * 2
+            sphere_marker.type = Marker.SPHERE
+            sphere_marker.action = Marker.ADD
+            
+            sphere_marker.pose.position.x = x
+            sphere_marker.pose.position.y = y
+            sphere_marker.pose.position.z = 0.2
+            sphere_marker.pose.orientation.w = 1.0
+            
+            sphere_marker.scale.x = 0.3
+            sphere_marker.scale.y = 0.3
+            sphere_marker.scale.z = 0.3
+            
+            # Color: active frontier is yellow, others are cyan
+            if active_index is not None and i == active_index:
+                sphere_marker.color.r = 1.0
+                sphere_marker.color.g = 1.0
+                sphere_marker.color.b = 0.0
+                sphere_marker.color.a = 1.0
+            else:
+                sphere_marker.color.r = 0.0
+                sphere_marker.color.g = 1.0
+                sphere_marker.color.b = 1.0
+                sphere_marker.color.a = 0.7
+            
+            # Create text marker with distance info
+            text_marker = Marker()
+            text_marker.header.frame_id = "map"
+            text_marker.header.stamp = self.get_clock().now().to_msg()
+            text_marker.ns = "frontiers"
+            text_marker.id = i * 2 + 1
+            text_marker.type = Marker.TEXT_VIEW_FACING
+            text_marker.action = Marker.ADD
+            
+            text_marker.pose.position.x = x
+            text_marker.pose.position.y = y
+            text_marker.pose.position.z = 0.5
+            
+            text_marker.scale.z = 0.15
+            text_marker.color.r = 1.0
+            text_marker.color.g = 1.0
+            text_marker.color.b = 1.0
+            text_marker.color.a = 1.0
+            
+            if active_index is not None and i == active_index:
+                text_marker.text = f"Frontier {i+1} (ACTIVE)\n{dist:.1f}m"
+            else:
+                text_marker.text = f"Frontier {i+1}\n{dist:.1f}m"
+            
+            marker_array.markers.append(sphere_marker)
+            marker_array.markers.append(text_marker)
+        
+        self.frontier_marker_pub.publish(marker_array)
+
+    def clear_frontier_markers(self):
+        """Clear all frontier markers from RViz"""
+        self.publish_frontier_markers(None)
 
     def goal_callback(self, msg):
         """Receive target tag ID"""
         self.target_tag_id = msg.data
         self.state = NavigationState.PLANNING
+
+        self.clear_frontier_markers()
+        self.current_frontiers = []
+        self.active_frontier_index = None
+
+        
         # If cancel command is given, the robot should become idle.
         if self.target_tag_id == self.cancel_command:
             self.state = NavigationState.IDLE
@@ -1254,8 +1354,14 @@ class AprilTagNavigator(Node):
                 if not frontiers:
                     self.get_logger().warning('No frontiers toward goal, staying idle')
                     self.state = NavigationState.IDLE
+                    self.clear_frontier_markers()
+                    self.current_frontiers = []
+                    self.active_frontier_index = None
                     self.cmd_vel_pub.publish(twist)
                     return
+                
+                self.current_frontiers = frontiers
+                self.publish_frontier_markers(frontiers)
                 
                 # Try to plan to frontiers
                 path_found = False
@@ -1275,6 +1381,7 @@ class AprilTagNavigator(Node):
                         self.path_index = 0
                         self.state = NavigationState.NAVIGATING
                         self.publish_path(self.current_path)
+                        self.publish_frontier_markers(frontiers, active_index=i)
                         self.get_logger().info(
                             f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
                         )
@@ -1293,8 +1400,14 @@ class AprilTagNavigator(Node):
                 if not frontiers:
                     self.get_logger().warning('No frontiers found, staying idle')
                     self.state = NavigationState.IDLE
+                    self.clear_frontier_markers()
+                    self.current_frontiers = []
+                    self.active_frontier_index = None
                     self.cmd_vel_pub.publish(twist)
                     return
+                
+                self.current_frontiers = frontiers
+                self.publish_frontier_markers(frontiers)
                 
                 path_found = False
                 for i, frontier in enumerate(frontiers):
@@ -1313,6 +1426,7 @@ class AprilTagNavigator(Node):
                         self.path_index = 0
                         self.state = NavigationState.NAVIGATING
                         self.publish_path(self.current_path)
+                        self.publish_frontier_markers(frontiers, active_index=i)
                         self.get_logger().info(
                             f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
                         )
@@ -1322,6 +1436,9 @@ class AprilTagNavigator(Node):
                 if not path_found:
                     self.get_logger().warning('No reachable frontier found, staying idle')
                     self.state = NavigationState.IDLE
+                    self.clear_frontier_markers()
+                    self.current_frontiers = []
+                    self.active_frontier_index = None
 
         elif self.state == NavigationState.NAVIGATING:
             # If the target tag is visible, then the robot should start TRACKING the tag and move directly to it.
@@ -1329,6 +1446,9 @@ class AprilTagNavigator(Node):
                 self.state = NavigationState.TRACKING
                 self.current_path = []
                 self.path_index = 0
+                self.clear_frontier_markers()
+                self.current_frontiers = []
+                self.active_frontier_index = None
                 self.get_logger().info('Switching to visual tracking')
                 self.cmd_vel_pub.publish(twist)
                 return
@@ -1336,6 +1456,9 @@ class AprilTagNavigator(Node):
             nav_info = self.follow_path()
             # the robot completed the path
             if nav_info is None:
+                self.clear_frontier_markers()
+                self.current_frontiers = []
+                self.active_frontier_index = None
                 # If the target AprilTag has been discovered, the robot should then move directly to the tag
                 if self.target_tag_id in self.discovered_tags:
                     if self.target_tag_id in self.current_detections:
