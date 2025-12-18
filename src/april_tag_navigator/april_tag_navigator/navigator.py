@@ -1361,6 +1361,7 @@ class AprilTagNavigator(Node):
                 self.frontier_target = None
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
+                self.state = NavigationState.RECOVERY
                 self.cmd_vel_pub.publish(twist)
                 return
             elif warning:
@@ -1450,6 +1451,7 @@ class AprilTagNavigator(Node):
                 self.current_path = []
                 self.path_index = 0
                 self.frontier_target = None 
+                self.state = NavigationState.RECOVERY
             elif warning:
                 # Slow down near obstacles
                 speed_factor = (min_distance - self.critical_distance) / \
