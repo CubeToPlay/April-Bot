@@ -941,9 +941,17 @@ class AprilTagNavigator(Node):
             
             # Score: prefer larger clusters with more unknown space, but not too far
             # Score = size * unknown_factor / distance_factor
-            cluster_scores.append(
-                (dist_to_centroid, -len(cluster_points), avg_x, avg_y, len(cluster_points))
-            )
+            DIST_WEIGHT = 3.0
+            SIZE_WEIGHT = 1.0
+            UNKNOWN_WEIGHT = 0.7
+
+            norm_dist = dist_to_centroid / MAX_RADIUS / self.map_resolution
+            norm_size = len(cluster_points)
+            norm_unknown = avg_unknown
+            distance_penalty = 1.0 + (DIST_WEIGHT * norm_dist) ** 2
+            score = (SIZE_WEIGHT * norm_size + UNKNOWN_WEIGHT * norm_unknown) / distance_penalty
+            
+            cluster_scores.append((score, dist_to_centroid, avg_x, avg_y, len(cluster_points)))
         
         if not cluster_scores:
             self.get_logger().warning(
@@ -953,10 +961,10 @@ class AprilTagNavigator(Node):
             return None
         
         # Sort by score (best first)
-        cluster_scores.sort()
+        cluster_scores.sort(reverse=True)
         
         # Return top 5 as list of (distance, x, y) for compatibility
-        result = [(c[0], c[2], c[3]) for c in cluster_scores]
+        result = [(c[1], c[2], c[3]) for c in cluster_scores]
         
         best = cluster_scores[0]
         self.get_logger().info(
