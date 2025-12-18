@@ -495,14 +495,15 @@ class AprilTagNavigator(Node):
         self.clear_frontier_markers()
         self.current_frontiers = []
         self.active_frontier_index = None
+        self.current_path = []
+        self.publish_path(self.current_path)
+        self.tracked_goal = None
+        self.recovery_phase = 0
 
         
         # If cancel command is given, the robot should become idle.
         if self.target_tag_id == self.cancel_command:
             self.state = NavigationState.IDLE
-            self.tracked_goal = None
-            self.current_path = []
-            self.recovery_phase = 0
         elif self.target_tag_id in self.discovered_tags:
             self.get_logger().info(f'Planning path to KNOWN tag {self.target_tag_id}')
         else:
