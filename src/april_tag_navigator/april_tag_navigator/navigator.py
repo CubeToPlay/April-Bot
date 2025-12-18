@@ -1427,8 +1427,8 @@ class AprilTagNavigator(Node):
                 self.tracked_goal = (goal_x, goal_y)
             else:
                 goal_moved_distance = math.hypot(
-                    goal_x - self.tracking_goal[0],
-                    goal_y - self.tracking_goal[1]
+                    goal_x - self.tracked_goal[0],
+                    goal_y - self.tracked_goal[1]
                 )
                 REPLAN_THRESHOLD = 0.5  # Replan if goal moves more than 0.5m
     
@@ -1438,7 +1438,7 @@ class AprilTagNavigator(Node):
                     )
                     self.current_path = []
                     self.path_index = 0
-                    self.tracking_goal = (goal_x, goal_y)
+                    self.tracked_goal = (goal_x, goal_y)
 
             if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
