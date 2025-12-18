@@ -6,7 +6,7 @@ slam_toolbox:
     # Frame IDs
     odom_frame: odom
     map_frame: map
-    base_frame: base_footprint
+    base_frame: base_link
     
     # Scan Settings
     scan_topic: /scan

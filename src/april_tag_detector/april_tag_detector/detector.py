@@ -33,9 +33,6 @@ class AprilTagDetector(Node):
 
         self.max_hamming = 5
 
-        self.min_confirm_time = 0.2  # seconds
-        self.max_center_jump = 50.0  # pixels
-
         self.bridge = CvBridge()
 
         self.tf_broadcaster = TransformBroadcaster(self)
