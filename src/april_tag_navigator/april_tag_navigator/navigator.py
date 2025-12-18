@@ -1340,7 +1340,11 @@ class AprilTagNavigator(Node):
         mx, my = world_to_map(tag_x, tag_y)
         
         # If already free, no adjustment needed
-        if map_data[my, mx] < 50 and map_data[my, mx] >= 0:
+        if 0 <= mx < map_data.shape[1] and 0 <= my < map_data.shape[0]:
+            if map_data[my, mx] < 50 and map_data[my, mx] >= 0:
+                return tag_x, tag_y
+        else:
+            # Out-of-bounds, just return original
             return tag_x, tag_y
 
         # Robot world position
