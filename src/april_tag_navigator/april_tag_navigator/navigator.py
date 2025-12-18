@@ -435,9 +435,9 @@ class AprilTagNavigator(Node):
             sphere_marker.pose.position.z = 0.2
             sphere_marker.pose.orientation.w = 1.0
             
-            sphere_marker.scale.x = 0.3
-            sphere_marker.scale.y = 0.3
-            sphere_marker.scale.z = 0.3
+            sphere_marker.scale.x = 0.1
+            sphere_marker.scale.y = 0.1
+            sphere_marker.scale.z = 0.1
             
             # Color: active frontier is yellow, others are cyan
             if active_index is not None and i == active_index:
