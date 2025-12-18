@@ -81,6 +81,7 @@ class AprilTagNavigator(Node):
         self.recovery_back_time = self.get_parameter('recovery_back_time').value
         self.recovery_turn_speed = self.get_parameter('recovery_turn_speed').value
         self.recovery_phase = 0
+        self.recovery_start_time = None
 
         self.scan_start_yaw = None
         self.last_yaw = None
@@ -1362,6 +1363,7 @@ class AprilTagNavigator(Node):
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
                 self.state = NavigationState.RECOVERY
+                self.recovery_start_time = self.get_clock().now()
                 self.cmd_vel_pub.publish(twist)
                 return
             elif warning:
@@ -1452,6 +1454,7 @@ class AprilTagNavigator(Node):
                 self.path_index = 0
                 self.frontier_target = None 
                 self.state = NavigationState.RECOVERY
+                self.recovery_start_time = self.get_clock().now()
             elif warning:
                 # Slow down near obstacles
                 speed_factor = (min_distance - self.critical_distance) / \
