@@ -1364,6 +1364,7 @@ class AprilTagNavigator(Node):
                 twist.angular.z = 0.0
                 self.state = NavigationState.RECOVERY
                 self.recovery_start_time = self.get_clock().now()
+                self.recovery_phase = 0
                 self.cmd_vel_pub.publish(twist)
                 return
             elif warning:
@@ -1454,6 +1455,7 @@ class AprilTagNavigator(Node):
                 self.path_index = 0
                 self.frontier_target = None 
                 self.state = NavigationState.RECOVERY
+                self.recovery_phase = 0
                 self.recovery_start_time = self.get_clock().now()
             elif warning:
                 # Slow down near obstacles
