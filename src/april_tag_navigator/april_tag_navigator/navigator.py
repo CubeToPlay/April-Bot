@@ -1112,7 +1112,7 @@ class AprilTagNavigator(Node):
 
         candidates = []
         MAX_RADIUS = int(10.0 / self.map_resolution)
-        MIN_WALL_CLEARANCE = 0.6
+        MIN_WALL_CLEARANCE = 0.4
         CLEARANCE_CELLS = int(MIN_WALL_CLEARANCE / self.map_resolution)
 
         for dy in range(-MAX_RADIUS, MAX_RADIUS):
