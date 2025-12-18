@@ -1369,7 +1369,7 @@ class AprilTagNavigator(Node):
                     self.get_logger().info(
                         f'Trying frontier {i+1}/{len(frontiers)}: ({frontier[1]:.2f}, {frontier[2]:.2f})'
                     )
-                    
+                    self.publish_frontier_markers(frontiers, active_index=i)
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
                         frontier[1], frontier[2], 
@@ -1381,7 +1381,9 @@ class AprilTagNavigator(Node):
                         self.path_index = 0
                         self.state = NavigationState.NAVIGATING
                         self.publish_path(self.current_path)
-                        self.publish_frontier_markers(frontiers, active_index=i)
+                        self.clear_frontier_markers()
+                        self.current_frontiers = []
+                        self.active_frontier_index = None
                         self.get_logger().info(
                             f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
                         )
@@ -1414,6 +1416,8 @@ class AprilTagNavigator(Node):
                     self.get_logger().info(
                         f'Trying frontier {i+1}/{len(frontiers)}: ({frontier[1]:.2f}, {frontier[2]:.2f})'
                     )
+
+                    self.publish_frontier_markers(frontiers, active_index=i)
                     
                     self.current_path = self.astar_planning(
                         self.robot_pose['x'], self.robot_pose['y'],
@@ -1426,7 +1430,9 @@ class AprilTagNavigator(Node):
                         self.path_index = 0
                         self.state = NavigationState.NAVIGATING
                         self.publish_path(self.current_path)
-                        self.publish_frontier_markers(frontiers, active_index=i)
+                        self.clear_frontier_markers()
+                        self.current_frontiers = []
+                        self.active_frontier_index = None
                         self.get_logger().info(
                             f'Path planned to frontier {i+1}: {len(self.current_path)} waypoints'
                         )
@@ -1446,9 +1452,6 @@ class AprilTagNavigator(Node):
                 self.state = NavigationState.TRACKING
                 self.current_path = []
                 self.path_index = 0
-                self.clear_frontier_markers()
-                self.current_frontiers = []
-                self.active_frontier_index = None
                 self.get_logger().info('Switching to visual tracking')
                 self.cmd_vel_pub.publish(twist)
                 return
