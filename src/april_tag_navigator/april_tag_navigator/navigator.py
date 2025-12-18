@@ -1384,7 +1384,7 @@ class AprilTagNavigator(Node):
         
         # Check for obstacles
         critical, warning, min_distance = self.check_obstacle_ahead()
-        if self.target_tag_visible or self.target_tag_id in self.current_detections:
+        if self.target_tag_visible:
             if self.state != NavigationState.TRACKING:
                 self.get_logger().info("Tag visible — skipping planning, entering TRACKING")
                 self.state = NavigationState.TRACKING
