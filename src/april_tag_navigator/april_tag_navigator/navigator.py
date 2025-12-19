@@ -508,37 +508,6 @@ class AprilTagNavigator(Node):
             self.get_logger().info(f'Planning path to KNOWN tag {self.target_tag_id}')
         else:
             self.get_logger().info(f'Searching for UNKNOWN tag {self.target_tag_id}')
-
-
-    def project_tag_to_free_space(self, tag_x, tag_y, robot_x, robot_y,
-                              step=0.05, max_backoff=1.5):
-        """
-        Walk from tag toward robot until a free map cell is found.
-        Returns (x, y) or None.
-        """
-        dx = robot_x - tag_x
-        dy = robot_y - tag_y
-        dist = math.hypot(dx, dy)
-
-        if dist < 1e-3:
-            return None
-
-        ux, uy = dx / dist, dy / dist
-
-        backoff = 0.0
-        while backoff <= max_backoff:
-            px = tag_x + ux * backoff
-            py = tag_y + uy * backoff
-
-            mx, my = self.world_to_map(px, py)
-            if (0 <= mx < self.map_width and
-                0 <= my < self.map_height and
-                self.is_free(mx, my)):
-                return px, py
-
-            backoff += step
-
-        return None
     
     def detection_callback(self, msg):
         """Receive AprilTags detection"""
@@ -1646,14 +1615,14 @@ class AprilTagNavigator(Node):
 
             ux, uy = dx / dist, dy / dist
 
-            raw_goal_x = tag_x - ux * self.approach_distance
-            raw_goal_y = tag_y - uy * self.approach_distance
+            goal_x = tag_x - ux * self.approach_distance
+            goal_y = tag_y - uy * self.approach_distance
 
-            reachable = self.compute_reachable_free_space()
+            # reachable = self.compute_reachable_free_space()
 
-            goal_x, goal_y = self.project_goal_to_reachable(
-                raw_goal_x, raw_goal_y, reachable
-            )
+            # goal_x, goal_y = self.project_goal_to_reachable(
+            #     raw_goal_x, raw_goal_y, reachable
+            # )
             if self.tracked_goal is None:
                 self.tracked_goal = (goal_x, goal_y)
             else:
