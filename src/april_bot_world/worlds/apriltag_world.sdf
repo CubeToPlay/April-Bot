@@ -268,6 +268,7 @@
           <geometry>
             <mesh>
               <uri>RockCubeTest.dae</uri>
+              <scale>2.5 2.5 2.5</scale>
             </mesh>
           </geometry>
         </visual>
@@ -293,7 +294,7 @@
         </inertial>
         <enable_wind>false</enable_wind>
       </link>
-      <pose>3.6487016677856445 -2.3238639831542969 -0.21381226181983948 -1.3776799277519831 -1.214220004715922 1.0071299416143733</pose>
+      <pose>3.6487016677856445 -2.3238639831542969 -0.5 -1.3776799277519831 -1.214220004715922 1.0071299416143733</pose>
       <static>true</static>
       <self_collide>false</self_collide>
     </model>

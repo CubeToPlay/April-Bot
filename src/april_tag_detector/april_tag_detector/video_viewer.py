@@ -2,12 +2,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from std_msgs.msg import Int32MultiArray
-from ament_index_python.packages import get_package_share_directory
 import cv2
-import numpy as np
-import yaml
-import os
 
 class VideoView(Node):
     """Video viewer to see through the robot's camera and to see if the robot sees an AprilTag"""
