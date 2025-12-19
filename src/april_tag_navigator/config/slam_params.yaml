@@ -16,7 +16,7 @@ slam_toolbox:
 
     qos_overrides:
       /scan:
-        reliability: reliable
+        reliability: best_effort
     
     # CRITICAL: Transform settings
     transform_publish_period: 0.02
