@@ -1,12 +1,11 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist, PoseStamped, Point
-from nav_msgs.msg import OccupancyGrid, Path
+from geometry_msgs.msg import Twist, Point
+from nav_msgs.msg import OccupancyGrid
 from std_msgs.msg import Int32, Bool
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
-from slam_toolbox.srv import SerializePoseGraph
 from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.time import Time
 from rclpy.duration import Duration
@@ -19,7 +18,7 @@ import os
 import heapq
 from collections import deque
 
-from april_tag_msgs.msg import AprilTagDetection, AprilTagDetectionArray
+from april_tag_msgs.msg import AprilTagDetectionArray
 
 class NavigationState(Enum):
     """Indicates what the robot is currently doing"""
