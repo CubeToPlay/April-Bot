@@ -1,0 +1,293 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="turtlebot3_waffle">
+
+    <!-- Spawn slightly above ground -->
+    <pose>0 0 0.12 0 0 0</pose>
+
+    <!-- ================= BASE ================= -->
+    <link name="base_link">
+
+      <!-- LOW CENTER OF MASS -->
+      <pose>0 0 0.05 0 0 0</pose>
+
+      <inertial>
+        <mass>3.2</mass>
+        <inertia>
+          <ixx>0.045</ixx>
+          <iyy>0.045</iyy>
+          <izz>0.065</izz>
+        </inertia>
+      </inertial>
+
+      <!-- BIG FLAT CONTACT PATCH -->
+      <collision name="base_collision">
+        <geometry>
+          <box>
+            <size>0.22 0.22 0.10</size>
+          </box>
+        </geometry>
+        <surface>
+          <contact>
+            <stiffness>8000</stiffness>
+            <damping>300</damping>
+          </contact>
+          <friction>
+            <ode>
+              <mu>1.2</mu>
+              <mu2>1.2</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <visual name="base_visual">
+        <geometry>
+          <box>
+            <size>0.22 0.22 0.10</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+
+    <!-- ================= LIDAR ================= -->
+    <link name="base_scan">
+    <!-- Centered on robot, slightly above base -->
+    <pose>0 0 0.18 0 0 0</pose>
+
+    <inertial>
+        <mass>0.05</mass>
+        <inertia>
+        <ixx>0.0002</ixx>
+        <iyy>0.0002</iyy>
+        <izz>0.0002</izz>
+        </inertia>
+    </inertial>
+
+    <visual name="lidar_visual">
+        <geometry>
+        <cylinder>
+            <radius>0.04</radius>
+            <length>0.05</length>
+        </cylinder>
+        </geometry>
+    </visual>
+
+    <collision name="lidar_collision">
+        <geometry>
+        <cylinder>
+            <radius>0.04</radius>
+            <length>0.05</length>
+        </cylinder>
+        </geometry>
+    </collision>
+
+    <!-- LiDAR SENSOR -->
+    <sensor name="lidar" type="gpu_lidar">
+        <always_on>true</always_on>
+        <update_rate>10</update_rate>
+        <topic>/scan</topic>
+        <gz_frame_id>base_scan</gz_frame_id>
+        <visualize>true</visualize>
+
+        <lidar>
+        <scan>
+            <horizontal>
+            <samples>360</samples>
+            <min_angle>-3.14159</min_angle>
+            <max_angle>3.14159</max_angle>
+            </horizontal>
+        </scan>
+        <range>
+            <min>0.12</min>
+            <max>3.5</max>
+        </range>
+        </lidar>
+    </sensor>
+    </link>
+
+
+    <!-- ================= LEFT WHEEL ================= -->
+    <link name="wheel_left_link">
+      <pose>0 0.10 0.033 0 1.5708 0</pose>
+
+      <inertial>
+        <mass>0.18</mass>
+        <inertia>
+          <ixx>0.0006</ixx>
+          <iyy>0.0006</iyy>
+          <izz>0.0006</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="wheel_left_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.018</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <stiffness>6000</stiffness>
+            <damping>250</damping>
+          </contact>
+          <friction>
+            <ode>
+              <mu>2.0</mu>
+              <mu2>2.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <visual name="wheel_left_visual">
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.018</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <!-- ================= RIGHT WHEEL ================= -->
+    <link name="wheel_right_link">
+      <pose>0 -0.10 0.033 0 1.5708 0</pose>
+
+      <inertial>
+        <mass>0.18</mass>
+        <inertia>
+          <ixx>0.0006</ixx>
+          <iyy>0.0006</iyy>
+          <izz>0.0006</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="wheel_right_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.018</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <stiffness>6000</stiffness>
+            <damping>250</damping>
+          </contact>
+          <friction>
+            <ode>
+              <mu>2.0</mu>
+              <mu2>2.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <visual name="wheel_right_visual">
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.018</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <!-- ================= CASTER ================= -->
+    <link name="caster_back_link">
+      <pose>-0.11 0 0.015 0 0 0</pose>
+
+      <inertial>
+        <mass>0.08</mass>
+        <inertia>
+          <ixx>0.0002</ixx>
+          <iyy>0.0002</iyy>
+          <izz>0.0002</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="caster_collision">
+        <geometry>
+          <sphere>
+            <radius>0.015</radius>
+          </sphere>
+        </geometry>
+        <surface>
+          <contact>
+            <stiffness>5000</stiffness>
+            <damping>400</damping>
+          </contact>
+          <friction>
+            <ode>
+              <mu>0.8</mu>
+              <mu2>0.8</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <visual name="caster_visual">
+        <geometry>
+          <sphere>
+            <radius>0.015</radius>
+          </sphere>
+        </geometry>
+      </visual>
+    </link>
+
+    <!-- ================= JOINTS ================= -->
+
+    <joint name="base_scan_joint" type="fixed">
+        <parent>base_link</parent>
+        <child>base_scan</child>
+    </joint>
+
+    <joint name="wheel_left_joint" type="revolute">
+      <parent>base_link</parent>
+      <child>wheel_left_link</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+      </axis>
+    </joint>
+
+    <joint name="wheel_right_joint" type="revolute">
+      <parent>base_link</parent>
+      <child>wheel_right_link</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+      </axis>
+    </joint>
+
+    <joint name="caster_joint" type="ball">
+      <parent>base_link</parent>
+      <child>caster_back_link</child>
+    </joint>
+
+    <!-- ================= DIFF DRIVE ================= -->
+    <plugin filename="gz-sim-diff-drive-system"
+            name="gz::sim::systems::DiffDrive">
+      <left_joint>wheel_left_joint</left_joint>
+      <right_joint>wheel_right_joint</right_joint>
+      <wheel_separation>0.20</wheel_separation>
+      <wheel_radius>0.033</wheel_radius>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <topic>/cmd_vel</topic>
+      <odom_topic>/odom</odom_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_link</child_frame_id>
+    </plugin>
+
+    <!-- Pose Publisher -->
+    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
+      <publish_link_pose>true</publish_link_pose>
+      <publish_sensor_pose>true</publish_sensor_pose>
+      <publish_collision_pose>false</publish_collision_pose>
+      <publish_visual_pose>false</publish_visual_pose>
+      <publish_nested_model_pose>true</publish_nested_model_pose>
+      <update_frequency>50</update_frequency>
+    </plugin>
+    
+  </model>
+</sdf>
