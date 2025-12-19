@@ -24,3 +24,5 @@ mediapipe
 
 ## Additional Information
 The `submission` folder has the video, slides, and report.
+The `simulation_video.mp4` may not open in VSCode. Please use another software to open this if you cannot open the video.
+The GitHub can be found at `https://github.com/CubeToPlay/April-Bot`
