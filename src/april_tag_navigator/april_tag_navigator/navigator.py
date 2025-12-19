@@ -1670,6 +1670,9 @@ class AprilTagNavigator(Node):
                     self.current_path = []
                     self.path_index = 0
                     self.tracked_goal = (goal_x, goal_y)
+                    twist.linear.x = 0.0
+                    twist.angular.z = 0.0
+                    self.cmd_vel_pub.publish(twist)
 
             if not self.current_path and dist > self.approach_distance:
                 self.current_path = self.astar_planning(
