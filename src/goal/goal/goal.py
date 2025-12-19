@@ -34,7 +34,7 @@ class Goal(Node):
             if (not self.waiting_for_completion) or (gesture == 11):
                 self.get_logger().info(f"Publishing gesture {gesture}")
                 self.goal_publisher.publish(msg)
-                self.waiting_for_completion = True
+                self.waiting_for_completion = (gesture != 11)
             else:
                 self.get_logger().info("Cannot publish gesture. Waiting until goal reached")
             
