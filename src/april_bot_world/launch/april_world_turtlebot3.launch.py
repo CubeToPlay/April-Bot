@@ -1,29 +1,28 @@
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription
+from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription, ExecuteProcess, TimerAction, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
-
+import os
 
 def generate_launch_description():
-    ros_gz_sim_pkg_path = get_package_share_directory('ros_gz_sim') #ros/gazebo package
-    turtlebot3_gazebo_pkg_path = get_package_share_directory('turtlebot3_gazebo') #turtlebot3_gazebo package
-
+    pkg_share = get_package_share_directory('april_bot_world')
     pkg_path = FindPackageShare('april_bot_world') #current package
-
-    gz_launch_path = PathJoinSubstitution([ros_gz_sim_pkg_path, 'launch', 'gz_sim.launch.py']) #path to launch file for ros/gazebo sim
-    turtlebot3_spawn_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'spawn_turtlebot3.launch.py']) #path to launch file for spawning turtlebot3
-    turtlebot3_state_publisher_launch_path = PathJoinSubstitution([turtlebot3_gazebo_pkg_path, 'launch', 'robot_state_publisher.launch.py']) #path to turtlebot3 state publisher launch file
-
-    x_pose = LaunchConfiguration('x_pose', default='-2.0') #set the x position of turtlebot
-    y_pose = LaunchConfiguration('y_pose', default='-0.5') #set the y position of turtlebot    
-
+    world_path = os.path.join(pkg_share, 'worlds', 'apriltag_world.sdf')
+    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
     return LaunchDescription([
         SetEnvironmentVariable(
-            'GZ_SIM_RESOURCE_PATH',
-            PathJoinSubstitution([pkg_path, 'models'])
+            name='GZ_SIM_RESOURCE_PATH',
+            value=(
+                os.environ.get('GZ_SIM_RESOURCE_PATH', '') +
+                ':' +
+                os.path.join(
+                    get_package_share_directory('apriltag_resources'),
+                    'models'
+                )
+            )
         ),
         
         SetEnvironmentVariable(
@@ -35,34 +34,40 @@ def generate_launch_description():
             'TURTLEBOT3_MODEL',
             'waffle'
         ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(gz_launch_path),
-            launch_arguments={
-                'gz_args': PathJoinSubstitution([pkg_path, 'worlds/apriltag_world.sdf']),
-                'on_exit_shutdown': 'True'
-            }.items(),
+        # Launch Gazebo with your world
+        ExecuteProcess(
+            cmd=['gz', 'sim', world_path, '-r'],
+            output='screen',
+            shell=False
         ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(turtlebot3_state_publisher_launch_path),
+        Node(
+            package='april_bot_world',
+            executable='odom_to_tf',
+            name='odom_to_tf',
+            parameters=[{
+                'use_sim_time': True,
+            }],
+            output='screen'
         ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(turtlebot3_spawn_launch_path),
-            launch_arguments={
-                'x_pose': x_pose,
-                'y_pose': y_pose
-            }.items(),
+        # Bridging and remapping Gazebo topics to ROS 2
+        Node(
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
+            arguments=[
+                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+                '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+                '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
+                '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+                '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+                '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+            ],
+            remappings=[
+                ('/camera/image_raw', '/camera/image_raw'),
+            ],
+            parameters=[{
+                'use_sim_time': True,
+                'qos_overrides./scan.reliability': 'best_effort',
+            }],
+            output='screen'
         ),
-
-        # Bridging and remapping Gazebo topics to ROS 2 (replace with your own topics)
-        # Node(
-        #     package='ros_gz_bridge',
-        #     executable='parameter_bridge',
-        #     arguments=['/example_imu_topic@sensor_msgs/msg/Imu@gz.msgs.IMU',],
-        #     remappings=[('/example_imu_topic',
-        #                  '/remapped_imu_topic'),],
-        #     output='screen'
-        # ),
     ])
