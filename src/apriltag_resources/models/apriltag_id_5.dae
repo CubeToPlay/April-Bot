@@ -83,14 +83,14 @@
     </effect>
     <effect id="Apriltag_ID_0-effect">
       <profile_COMMON>
-        <newparam sid="tag36h11-0_png-surface">
+        <newparam sid="tag36h11-5_png-surface">
           <surface type="2D">
-            <init_from>tag36h11-0_png</init_from>
+            <init_from>tag36h11-5_png</init_from>
           </surface>
         </newparam>
-        <newparam sid="tag36h11-0_png-sampler">
+        <newparam sid="tag36h11-5_png-sampler">
           <sampler2D>
-            <source>tag36h11-0_png-surface</source>
+            <source>tag36h11-5_png-surface</source>
           </sampler2D>
         </newparam>
         <technique sid="common">
@@ -99,7 +99,7 @@
               <color sid="emission">0 0 0 1</color>
             </emission>
             <diffuse>
-              <texture texture="tag36h11-0_png-sampler" texcoord="UVMap"/>
+              <texture texture="tag36h11-5_png-sampler" texcoord="UVMap"/>
             </diffuse>
             <index_of_refraction>
               <float sid="ior">1.5</float>
@@ -110,8 +110,8 @@
     </effect>
   </library_effects>
   <library_images>
-    <image id="tag36h11-0_png" name="tag36h11-0_png">
-      <init_from>tag36h11-0.png</init_from>
+    <image id="tag36h11-5_png" name="tag36h11-5_png">
+      <init_from>tag36h11-5.png</init_from>
     </image>
   </library_images>
   <library_materials>
