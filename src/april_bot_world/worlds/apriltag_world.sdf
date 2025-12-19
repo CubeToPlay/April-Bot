@@ -87,7 +87,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>apriltag_id_0.dae</uri>
+              <uri>apriltag_id_5.dae</uri>
               <scale>0.5 0.5 0.5</scale>
             </mesh>
           </geometry>
@@ -95,7 +95,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>apriltag_id_0.dae</uri>
+              <uri>apriltag_id_5.dae</uri>
             </mesh>
           </geometry>
         </collision>
