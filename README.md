@@ -23,4 +23,4 @@ mediapipe
 
 
 ## Additional Information
-The `submission` folder has the video and slides.
+The `submission` folder has the video, slides, and report.
